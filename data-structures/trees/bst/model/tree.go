@@ -45,50 +45,42 @@ func (t *Tree) Find(data int) (*Node, error) {
 	if t.Root != nil {
 		r, err := t.Root.Find(data)
 		return r, err
-	} else {
-		return nil, errors.New("the tree is empty")
 	}
+	fmt.Println("the tree is empty")
+	return nil, errors.New("the tree is empty")
 }
+
+var errNoKey = errors.New("there is no such key in the tree")
 
 func (n *Node) Find(data int) (*Node, error) {
 	var result *Node
-	errNoKey := errors.New("there is no such key in the tree")
-	if n != nil {
-		if data != n.Key {
-			if n.Left == nil && n.Right == nil {
-				//fmt.Println("Key not found - no more trees")
+
+	if data != n.Key {
+		if n.Left == nil && n.Right == nil {
+			fmt.Println("there is no such key in the tree")
+			return nil, errNoKey
+		} else if data < n.Key {
+			if n.Left != nil {
+				l, err := n.Left.Find(data)
+				return l, err
+			} else {
+				fmt.Println("there is no such key in the tree")
 				return nil, errNoKey
-			} else if data < n.Key {
-				if n.Left != nil {
-					//fmt.Println("Left tree not nil and data less than CURRENT NODE key")
-					//fmt.Println("searching in LEFT tree")
-					l, err := n.Left.Find(data)
-					return l, err
-				} else {
-					//fmt.Println("Key not found - no more trees from the left")
-					return nil, errNoKey
-				}
-			} else if data > n.Key {
-				if n.Right != nil {
-					//fmt.Println("Right tree not nil and data is greater than CURRENT NODE key")
-					//fmt.Println("searching in RIGHT tree")
-					r, err := n.Right.Find(data)
-					return r, err
-				} else {
-					//fmt.Println("Key not found - no more trees from the right")
-					return nil, errNoKey
-				}
 			}
-		} else {
-			result = n
-			//Here - insert the additional search for duplicates, smth like:
-			// d,err :=n.Find(result.Key)
-			// return d,err
-			// with implemented counter of duplicates
+		} else if data > n.Key {
+			if n.Right != nil {
+				r, err := n.Right.Find(data)
+				return r, err
+			} else {
+				fmt.Println("there is no such key in the tree")
+				return nil, errNoKey
+			}
 		}
-	} else {
-		return nil, errors.New("the node is empty")
 	}
+
+	result = n
+	fmt.Println("the key is found in the tree:", result.Key)
+
 	return result, nil
 }
 
@@ -96,7 +88,7 @@ func (t *Tree) Remove(key int) error {
 	// checks if the tree is not empty and countains the specified key
 	node, err := t.Find(key)
 	if node == nil && err != nil {
-		fmt.Println("Result of search:", err)
+		fmt.Println("an error occurred:", err)
 		return err
 	} else if node != nil && err == nil {
 		return removeNode(&t.Root, key)
