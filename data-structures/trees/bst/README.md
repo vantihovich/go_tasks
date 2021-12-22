@@ -1,0 +1,1 @@
+A very naive implementation of Binary Search Tree in Go. 
