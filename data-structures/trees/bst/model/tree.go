@@ -111,19 +111,19 @@ func removeNode(node **Node, key int) error {
 	if n.Key == key {
 		//check whether the node has children
 		if n.Left == nil && n.Right == nil {
-			//fmt.Println("deleting the leaf", *node)
+			//deleting the leaf
 			*node = nil
 		} else if n.Left != nil && n.Right == nil {
-			//fmt.Println("check the condition - only left child")
-			//fmt.Println("Assigning left child to the node")
+			//check the condition - only left child
+			//Assigning left child to the node
 			*node = n.Left
 		} else if n.Left == nil && n.Right != nil {
-			//fmt.Println("check the condition - only rigt child")
-			//fmt.Println("Assigning right child to the node")
+			//check the condition - only rigt child
+			//Assigning right child to the node
 			*node = n.Right
 		} else if n.Left != nil && n.Right != nil {
-			//fmt.Println("check the condition - has both children")
-			//fmt.Println("Searching for the biggest child from the left tree to assign to deleted node")
+			//check the condition - has both children
+			//Searching for the biggest child from the left tree to assign to deleted node
 			b := searchBiggest(n.Left)
 			//removing the found biggest leaf from the left tree
 			removeNode(&n.Left, b.Key)
