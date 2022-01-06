@@ -89,17 +89,25 @@ func (d *DeqList) PrintQueue() {
 var ErrEmp = errors.New("The queue is empty")
 var ErrNoEl = errors.New("No such element in the queue")
 
-func (e *Element) Search(n int) (*Element, error) {
+func (d *DeqList) Search(n int) (*Element, error) {
 	var result *Element
+	var err error
 	//Check if the queue is empty
-	if e == nil {
+	if d.Root == nil {
 		return nil, ErrEmp
 	}
 	//Check if the root is equal to the searched int
-	if e.El == n {
-		result = e
+	if d.Root.El == n {
+		result = d.Root
 		return result, nil
+	} else {
+		result, err = d.Root.SearchEl(n)
 	}
+	return result, err
+}
+
+func (e *Element) SearchEl(n int) (*Element, error) {
+	var result *Element
 	//Cycle checking starts from the 1st element, if there is no link to the next el - the cycle stops and the err is returned
 	for i := e.FindFirst(); i.IndF != nil; i = i.IndF {
 		//Checking for equality the first element itself
@@ -161,16 +169,25 @@ func RemoveFirst(e **Element) {
 	f = nil
 }
 
-func RemoveExact(e **Element, r int) {
-	var f = *e
-	s, err := f.Search(r)
-
+func (d *DeqList) RemoveExact(r int) {
+	searchRes, err := d.Search(r)
 	if err != nil {
 		fmt.Println("There error occurred:", err)
 		return
 	}
+	RemoveExactFunc(&d.Root, searchRes)
+}
 
-	if s == f {
+func RemoveExactFunc(e **Element, r *Element) {
+	var f = *e
+	// s, err := f.Search(r)
+
+	// if err != nil {
+	// 	fmt.Println("There error occurred:", err)
+	// 	return
+	// }
+
+	if r == f {
 		if f.IndF == nil && f.IndR == nil {
 			//Condition-  the el is the only el
 			*e = nil
@@ -187,26 +204,26 @@ func RemoveExact(e **Element, r int) {
 			return
 		} else if f.IndF != nil && f.IndR != nil {
 			//Condition-  the el is the root , but but there are els from the left and right
-			f.IndF.IndR = s.IndR
-			f.IndR.IndF = s.IndF
+			f.IndF.IndR = r.IndR
+			f.IndR.IndF = r.IndF
 			*e = f.IndF
 			return
 		}
 
 	}
-	if s.IndF != nil && s.IndR == nil {
+	if r.IndF != nil && r.IndR == nil {
 		//Condition -  element in the queue not root and is the first one
-		s.IndF.IndR = nil
-		s = nil
-	} else if s.IndF == nil && s.IndR != nil {
+		r.IndF.IndR = nil
+		r = nil
+	} else if r.IndF == nil && r.IndR != nil {
 		//Condition -  element in the queue not root and is the last one
-		s.IndR.IndF = nil
-		s = nil
-	} else if s.IndF != nil && s.IndR != nil {
+		r.IndR.IndF = nil
+		r = nil
+	} else if r.IndF != nil && r.IndR != nil {
 		//Condition -  element in the queue not root and has elements from the right and left
-		s.IndF.IndR = s.IndR
-		s.IndR.IndF = s.IndF
-		s = f.IndF
+		r.IndF.IndR = r.IndR
+		r.IndR.IndF = r.IndF
+		r = f.IndF
 	}
 
 }

@@ -19,23 +19,23 @@ func main() {
 
 	//search provides result in 2 fields: 1)- the returned element(if found),2) the returned error
 	fmt.Println("Search result for 6:")
-	fmt.Println(t.Root.Search(6))
+	fmt.Println(t.Search(6))
 	fmt.Println("======")
 
 	fmt.Println("Search result for 10:")
-	fmt.Println(t.Root.Search(10))
+	fmt.Println(t.Search(10))
 	fmt.Println("======")
 
 	fmt.Println("Search result for 11:")
-	fmt.Println(t.Root.Search(11))
+	fmt.Println(t.Search(11))
 	fmt.Println("======")
 
 	fmt.Println("Search result for 12:")
-	fmt.Println(t.Root.Search(12))
+	fmt.Println(t.Search(12))
 	fmt.Println("======")
 
 	fmt.Println("Search result for 24:")
-	fmt.Println(t.Root.Search(24))
+	fmt.Println(t.Search(24))
 	fmt.Println("======")
 
 }

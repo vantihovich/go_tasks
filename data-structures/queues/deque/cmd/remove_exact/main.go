@@ -21,9 +21,8 @@ func main() {
 	t.PrintQueue()
 	fmt.Println("======")
 
-	//removing func takes 2 variables: 1)-the queue to delete from,2) - int to be deleted
 	fmt.Println("An attempt to remove ")
-	model.RemoveExact(&t.Root, 6)
+	t.RemoveExact(11)
 
 	fmt.Println("TRAVERSE after deleting :")
 	t.PrintQueue()
