@@ -6,44 +6,44 @@ import (
 )
 
 type Tree struct {
-	Root *Node
+	Root *Organisation
 }
 
-func (t *Tree) Insert(data Node) {
+func (t *Tree) Insert(data *Organisation) {
 	if t.Root == nil {
-		t.Root = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
+		t.Root = &Organisation{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 		return
 	}
 	t.Root.Insert(data)
 }
 
-type Node struct {
+type Organisation struct {
 	OrgName        string
 	EmployeeNumber int
 	Resident       bool
-	Left           *Node
-	Right          *Node
+	Left           *Organisation
+	Right          *Organisation
 }
 
-func (n *Node) Insert(data Node) {
-	if stringsCompare(data.OrgName, n.OrgName) == 3 {
+func (o *Organisation) Insert(data *Organisation) {
+	if !compareOrganisations(data, o) {
 		// insert into the left tree
-		if n.Left == nil {
-			n.Left = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
+		if o.Left == nil {
+			o.Left = &Organisation{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 		} else {
-			n.Left.Insert(data)
+			o.Left.Insert(data)
 		}
 		return
 	}
 	// insert into the right tree
-	if n.Right == nil {
-		n.Right = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
+	if o.Right == nil {
+		o.Right = &Organisation{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 	} else {
-		n.Right.Insert(data)
+		o.Right.Insert(data)
 	}
 }
 
-func (t *Tree) Find(data string) (*Node, error) {
+func (t *Tree) Find(data string) (*Organisation, error) {
 	if t.Root != nil {
 		r, err := t.Root.Find(data)
 		return r, err
@@ -54,25 +54,25 @@ func (t *Tree) Find(data string) (*Node, error) {
 
 var errNoKey = errors.New("there is no such key in the tree")
 
-func (n *Node) Find(data string) (*Node, error) {
-	var result *Node
+func (o *Organisation) Find(data string) (*Organisation, error) {
+	var result *Organisation
+	assumedOrganisation := &Organisation{OrgName: data}
 
-	if data != n.OrgName {
-		if n.Left == nil && n.Right == nil {
+	if data != o.OrgName {
+		if o.Left == nil && o.Right == nil {
 			fmt.Println("there is no such key in the tree")
 			return nil, errNoKey
-		} else if stringsCompare(data, n.OrgName) == 3 {
-			if n.Left != nil {
-				l, err := n.Left.Find(data)
+		} else if !compareOrganisations(assumedOrganisation, o) {
+			if o.Left != nil {
+				l, err := o.Left.Find(data)
 				return l, err
 			} else {
 				fmt.Println("there is no such key in the tree")
 				return nil, errNoKey
 			}
-
-		} else if stringsCompare(data, n.OrgName) == 2 {
-			if n.Right != nil {
-				r, err := n.Right.Find(data)
+		} else if compareOrganisations(assumedOrganisation, o) {
+			if o.Right != nil {
+				r, err := o.Right.Find(data)
 				return r, err
 			} else {
 				fmt.Println("there is no such key in the tree")
@@ -81,8 +81,8 @@ func (n *Node) Find(data string) (*Node, error) {
 		}
 	}
 
-	result = n
-	fmt.Printf("the key is found in the tree - OrgName:%q, EmployeeNum:%d, Resident-%t;\n", n.OrgName, n.EmployeeNumber, n.Resident)
+	result = o
+	fmt.Printf("the key is found in the tree - OrgName:%q, EmployeeNum:%d, Resident-%t;\n", o.OrgName, o.EmployeeNumber, o.Resident)
 
 	return result, nil
 }
@@ -99,15 +99,18 @@ func (t *Tree) Remove(key string) error {
 	return errors.New("unexpected error")
 }
 
-func removeNode(node **Node, key string) error {
+func removeNode(node **Organisation, key string) error {
 	n := *node
+	assumedOrganisation := &Organisation{OrgName: key}
 
 	//recursion to get the specified node
 	if *node == nil {
 		return errors.New("empty BST")
-	} else if stringsCompare(key, n.OrgName) == 3 {
+		//} else if stringsCompare(key, n.OrgName) == 3 {
+	} else if !compareOrganisations(assumedOrganisation, n) {
 		removeNode(&n.Left, key)
-	} else if stringsCompare(key, n.OrgName) == 2 || stringsCompare(key, n.OrgName) == 1 {
+		//} else if stringsCompare(key, n.OrgName) == 2 {
+	} else if compareOrganisations(assumedOrganisation, n) {
 		removeNode(&n.Right, key)
 	}
 	//deleting process
@@ -138,25 +141,13 @@ func removeNode(node **Node, key string) error {
 	return errors.New("unexpected error occurred")
 }
 
-func searchBiggest(node *Node) *Node {
+func searchBiggest(node *Organisation) *Organisation {
 	if node.Right != nil {
 		node = searchBiggest(node.Right)
 	}
 	return node
 }
 
-func stringsCompare(a, b string) int {
-	// The result might be 1, 2 or 3
-	// 1- string a is equal to string b
-	// 2- string a is bigger than string b
-	// 3- string a is less than string b
-	var result int
-	if a == b {
-		result = 1
-	} else if a > b {
-		result = 2
-	} else if a < b {
-		result = 3
-	}
-	return result
+func compareOrganisations(org1, org2 *Organisation) bool {
+	return org1.OrgName > org2.OrgName
 }
