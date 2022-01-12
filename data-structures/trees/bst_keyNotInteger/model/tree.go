@@ -9,12 +9,12 @@ type Tree struct {
 	Root *Node
 }
 
-func (t *Tree) Insert(data string, emN int, resid bool) {
+func (t *Tree) Insert(data Node) {
 	if t.Root == nil {
-		t.Root = &Node{OrgName: data, EmployeeNumber: emN, Resident: resid}
+		t.Root = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 		return
 	}
-	t.Root.Insert(data, emN, resid)
+	t.Root.Insert(data)
 }
 
 type Node struct {
@@ -25,21 +25,21 @@ type Node struct {
 	Right          *Node
 }
 
-func (n *Node) Insert(data string, emN int, resid bool) {
-	if data < n.OrgName {
+func (n *Node) Insert(data Node) {
+	if stringsCompare(data.OrgName, n.OrgName) == 3 {
 		// insert into the left tree
 		if n.Left == nil {
-			n.Left = &Node{OrgName: data, EmployeeNumber: emN, Resident: resid}
+			n.Left = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 		} else {
-			n.Left.Insert(data, emN, resid)
+			n.Left.Insert(data)
 		}
 		return
 	}
 	// insert into the right tree
 	if n.Right == nil {
-		n.Right = &Node{OrgName: data, EmployeeNumber: emN, Resident: resid}
+		n.Right = &Node{OrgName: data.OrgName, EmployeeNumber: data.EmployeeNumber, Resident: data.Resident}
 	} else {
-		n.Right.Insert(data, emN, resid)
+		n.Right.Insert(data)
 	}
 }
 
@@ -61,7 +61,7 @@ func (n *Node) Find(data string) (*Node, error) {
 		if n.Left == nil && n.Right == nil {
 			fmt.Println("there is no such key in the tree")
 			return nil, errNoKey
-		} else if data < n.OrgName {
+		} else if stringsCompare(data, n.OrgName) == 3 {
 			if n.Left != nil {
 				l, err := n.Left.Find(data)
 				return l, err
@@ -69,7 +69,8 @@ func (n *Node) Find(data string) (*Node, error) {
 				fmt.Println("there is no such key in the tree")
 				return nil, errNoKey
 			}
-		} else if data > n.OrgName {
+
+		} else if stringsCompare(data, n.OrgName) == 2 {
 			if n.Right != nil {
 				r, err := n.Right.Find(data)
 				return r, err
@@ -104,9 +105,9 @@ func removeNode(node **Node, key string) error {
 	//recursion to get the specified node
 	if *node == nil {
 		return errors.New("empty BST")
-	} else if n.OrgName > key {
+	} else if stringsCompare(key, n.OrgName) == 3 {
 		removeNode(&n.Left, key)
-	} else if n.OrgName < key {
+	} else if stringsCompare(key, n.OrgName) == 2 || stringsCompare(key, n.OrgName) == 1 {
 		removeNode(&n.Right, key)
 	}
 	//deleting process
@@ -142,4 +143,20 @@ func searchBiggest(node *Node) *Node {
 		node = searchBiggest(node.Right)
 	}
 	return node
+}
+
+func stringsCompare(a, b string) int {
+	// The result might be 1, 2 or 3
+	// 1- string a is equal to string b
+	// 2- string a is bigger than string b
+	// 3- string a is less than string b
+	var result int
+	if a == b {
+		result = 1
+	} else if a > b {
+		result = 2
+	} else if a < b {
+		result = 3
+	}
+	return result
 }

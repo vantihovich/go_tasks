@@ -8,15 +8,24 @@ import (
 
 func main() {
 	var t model.Tree
-	// Insert takes 3 arguments: 1-name of the organisation, number of employees, resident - true/false
-	t.Insert("OrganisationOne", 25, true)
-	t.Insert("OrgTwo", 15, false)
-	t.Insert("OrgOne", 14, true)
-	t.Insert("organisation 435", 100, true)
-	t.Insert("Horror Movies", 200, false)
-	t.Insert("LalaBand", 20, true)
-	t.Insert("Mighty Teletubbies", 4, false)
-	t.Insert("Horns and hooves", 5, false)
+
+	org1 := model.Node{OrgName: "OrganisationOne", EmployeeNumber: 25, Resident: true}
+	org2 := model.Node{OrgName: "OrgTwo", EmployeeNumber: 15, Resident: false}
+	org3 := model.Node{OrgName: "OrgOne", EmployeeNumber: 14, Resident: true}
+	org4 := model.Node{OrgName: "organisation 435", EmployeeNumber: 100, Resident: true}
+	org5 := model.Node{OrgName: "Horror Movies", EmployeeNumber: 100, Resident: true}
+	org6 := model.Node{OrgName: "LalaBand", EmployeeNumber: 20, Resident: true}
+	org7 := model.Node{OrgName: "Mighty Teletubbies", EmployeeNumber: 4, Resident: false}
+	org8 := model.Node{OrgName: "Horns & Hooves", EmployeeNumber: 5, Resident: false}
+	// Insert takes struct as argument with 3 fields: 1-name of the organisation, number of employees, resident - true/false
+	t.Insert(org1)
+	t.Insert(org2)
+	t.Insert(org3)
+	t.Insert(org4)
+	t.Insert(org5)
+	t.Insert(org6)
+	t.Insert(org7)
+	t.Insert(org8)
 
 	fmt.Println("INFIX_TRAVERSE example:")
 	printInOrder(t.Root)
