@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/vantihovich/go_tasks/tree/master/data-structures/trees/bst_not_int/model"
+	"github.com/vantihovich/go_tasks/tree/master/data-structures/trees/bst_keyNotInteger/model"
 )
 
 func main() {
