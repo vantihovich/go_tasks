@@ -6,25 +6,28 @@ import (
 )
 
 func main() {
-	a := make(chan int)           //1st channel
-	alarmClock := make(chan bool) //stopper channel
+	a := make(chan int) //1st channel
+	b := make(chan int) //2nd channel
 
-	go CheckEven(a, alarmClock) //starting 1st goroutine that checks if received value is even
+	var i int //variable for counter
+
+	go CheckEven(a, b) //starting 1st goroutine that checks if received value is even
+	go PrintEven(b)    //starting 2nd goroutine that prints even numbers
 
 	go func() { //goroutine for timer
 		time.Sleep(4 * time.Second) //timer
-		alarmClock <- true          // sending the value to the stopper channel
 		close(a)
-		defer close(alarmClock)
+		close(b)
 	}()
 
-	for i := 1; ; i += 1 { //endless cycle
+	for { //endless cycle
 		select {
 		case _, ok := <-a: // check if the 1st channel is open, if not - stopping the main
 			if !ok {
 				return
 			}
 		default: // default sending the values to the 1st channel every 0.5 of the second
+			i += 1
 			a <- i
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -32,30 +35,17 @@ func main() {
 
 }
 
-func CheckEven(ch chan int, alarm chan bool) {
-	b := make(chan int)    //the second channel
-	go PrintEven(b, alarm) //starting 2nd goroutine for printing even numbers
-
-	for {
-		select { //listening to both channels(channel with value, stopper channel)
-		case <-alarm: // if alarm channel received value - close the 2nd channel and stop the routine
-			close(b)
-			return
-		case value := <-ch: // listening to value channel
-			if value%2 == 0 { //check if the value is even
-				b <- value //sending the value to the 2nd channel
-			}
+func CheckEven(ch, b chan int) {
+	for value := range ch {
+		if value%2 == 0 { //check if the value is even
+			b <- value //sending the value to the 2nd channel
 		}
 	}
+
 }
 
-func PrintEven(ch chan int, alarm chan bool) {
-	for {
-		select { //listening to both channels(channel with value, stopper channel)
-		case <-alarm: // if alarm channel received value - stop the routine
-			return
-		case value := <-ch: // listening to value channel
-			fmt.Println("check", value)
-		}
+func PrintEven(ch chan int) {
+	for value := range ch {
+		fmt.Println("check", value)
 	}
 }
