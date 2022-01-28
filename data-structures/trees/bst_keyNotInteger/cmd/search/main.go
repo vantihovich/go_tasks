@@ -9,6 +9,7 @@ import (
 func main() {
 	var t model.Tree
 
+
 	org1 := model.Organisation{OrgName: "OrganisationOne", EmployeeNumber: 25, Resident: true}
 	org2 := model.Organisation{OrgName: "OrgTwo", EmployeeNumber: 15, Resident: false}
 	org3 := model.Organisation{OrgName: "OrgOne", EmployeeNumber: 14, Resident: true}
@@ -26,6 +27,7 @@ func main() {
 	t.Insert(&org6)
 	t.Insert(&org7)
 	t.Insert(&org8)
+
 
 	fmt.Println("PREFIX_TRAVERSE example:")
 	printPreOrder(t.Root)
@@ -45,7 +47,9 @@ func main() {
 
 }
 
+
 func printPreOrder(n *model.Organisation) {
+
 	if n == nil {
 		return
 	}

@@ -9,6 +9,7 @@ import (
 func main() {
 	var t model.Tree
 
+
 	org1 := model.Organisation{OrgName: "OrganisationOne", EmployeeNumber: 25, Resident: true}
 	org2 := model.Organisation{OrgName: "OrgTwo", EmployeeNumber: 15, Resident: false}
 	org3 := model.Organisation{OrgName: "OrgOne", EmployeeNumber: 14, Resident: true}
@@ -27,6 +28,7 @@ func main() {
 	t.Insert(&org7)
 	t.Insert(&org8)
 
+
 	fmt.Println("INFIX_TRAVERSE example:")
 	printInOrder(t.Root)
 	fmt.Println("======")
@@ -40,7 +42,9 @@ func main() {
 	fmt.Println("======")
 }
 
+
 func printPreOrder(n *model.Organisation) {
+
 	if n == nil {
 		return
 	}
@@ -50,7 +54,9 @@ func printPreOrder(n *model.Organisation) {
 	printPreOrder(n.Right)
 }
 
+
 func printPostOrder(n *model.Organisation) {
+
 	if n == nil {
 		return
 	}
@@ -60,7 +66,9 @@ func printPostOrder(n *model.Organisation) {
 	fmt.Printf("OrgName:%q, EmployeeNum:%d, Resident-%t;\n", n.OrgName, n.EmployeeNumber, n.Resident)
 }
 
+
 func printInOrder(n *model.Organisation) {
+
 	if n == nil {
 		return
 	}
