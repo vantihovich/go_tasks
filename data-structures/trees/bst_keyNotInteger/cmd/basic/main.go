@@ -9,7 +9,6 @@ import (
 func main() {
 	var t model.Tree
 
-
 	org1 := model.Organisation{OrgName: "OrganisationOne", EmployeeNumber: 25, Resident: true}
 	org2 := model.Organisation{OrgName: "OrgTwo", EmployeeNumber: 15, Resident: false}
 	org3 := model.Organisation{OrgName: "organisation 435", EmployeeNumber: 100, Resident: true}
