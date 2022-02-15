@@ -2,73 +2,63 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"sync"
 )
 
-func SendA(out chan int) {
+func SendTo1stChannel(out chan int) {
 	for i := 0; i < 5; i++ {
-		//fmt.Println("sendA", i)
 		out <- i
-		time.Sleep(time.Second)
 	}
+	close(out)
 }
 
-func SendB(out chan int) {
-	for i := 5; i < 10; i++ {
-		//fmt.Println("sendB", i)
-		out <- i
-		time.Sleep(time.Second)
-	}
-}
-
-func SendC(out chan int) {
+func SendTo2ndChannel(out chan int) {
 	for i := 10; i < 15; i++ {
-		//fmt.Println("sendC", i)
 		out <- i
-		time.Sleep(1 * time.Second)
 	}
+	close(out)
 }
 
-func joinChannels( /*wg *sync.WaitGroup,*/ chs ...<-chan int) <-chan int {
-	//defer wg.Done()
-
-	common := make(chan int)
-
-	for _, res := range chs {
-		fmt.Println("RCV by join", <-res)
-		res := res
-		go func() {
-			for {
-				fmt.Println("send by join", <-res)
-				common <- <-res
-			}
-		}()
-
+func SendTo3rdChannel(out chan int) {
+	for i := 20; i < 25; i++ {
+		out <- i
 	}
-	return common
+	close(out)
+}
+
+func joinChannels(chs ...<-chan int) <-chan int {
+	var wg sync.WaitGroup
+	commonChannel := make(chan int) //starting resulting common channel
+
+	for _, ranged := range chs { //cycle that looks through incoming channels
+		wg.Add(1) //adding wait group counter for each iteration
+		ranged := ranged
+
+		go func() { //routine is started for each iteration
+			for n := range ranged { //cycle that looks frough data in the channel
+				commonChannel <- n //sending data to one common channel
+			}
+			wg.Done() //decreasing wait group counter
+		}()
+	}
+
+	go func() { //starting routine for waiting, when all routines from previous cycle are done
+		wg.Wait()            //waiting for all routines to finish
+		close(commonChannel) //closing common channel
+	}()
+	return commonChannel
 }
 
 func main() {
-	//var wg sync.WaitGroup
+	ch1 := make(chan int) // starting 3 channels
+	ch2 := make(chan int)
+	ch3 := make(chan int)
 
-	a := make(chan int)
-	b := make(chan int)
-	c := make(chan int)
+	go SendTo1stChannel(ch1) //starting routine for sending ints to the 1st channel
+	go SendTo2ndChannel(ch2) //starting routine for sending ints to the 2nd channel
+	go SendTo3rdChannel(ch3) //starting routine for sending ints to the 3rd channel
 
-	// finA := make(chan bool)
-	// finB := make(chan bool)
-	// finC := make(chan bool)
-
-	go SendA(a)
-	go SendB(b)
-	go SendC(c)
-
-	//wg.Add(1)
-	for num := range joinChannels( /*&wg,*/ a, b, c) {
-		fmt.Println("========>>>>>>>>>>result", num)
+	for s := range joinChannels(ch1, ch2, ch3) { //ranging func that puts all 3 channels together
+		fmt.Println("result", s)
 	}
-
-	//wg.Wait()
-
-	//close(res)
 }
