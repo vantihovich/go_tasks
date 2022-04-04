@@ -8,7 +8,8 @@ import (
 	"github.com/flowchartsman/swaggerui"
 )
 
-//go:embed apiAuth.yaml
+//go:embed api/*.yaml
+
 var spec []byte
 
 func main() {
