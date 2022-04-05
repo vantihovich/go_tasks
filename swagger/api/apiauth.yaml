@@ -1,0 +1,163 @@
+openapi: "3.0.3"
+info:
+  title: AuthenticateMe - an API for authentication
+  description: "This is an Authorization server.  
+  For sample, you can use the api key \"special-key\" to test the authentication"
+  version: 1.0.0
+  termsOfService: "http://auth.io/terms/"
+  contact:
+    email: "authMe@authm.io"
+  license:
+    name: Apache 2.0
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+
+servers:
+  - url: https://{environment}.authenticate.com/
+    variables:
+      environment:
+        default: api    # Production server
+        enum:
+          - api.         # Production server
+          - api.dev     # Development server
+          - api.staging # Staging server
+
+security:
+  - basicAuth: []
+    keyAuth: []
+
+
+paths:
+  /auth/register:
+    post:
+      summary: Create new user and user`s profile
+      description: Creates new user and profile for user, taking "login" as a basic check of "existing" users
+      operationId: createNewUser
+      tags:
+        - users
+
+      requestBody:
+        description: Basic information about the new user
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/RegistrationRequest'
+      
+      responses:
+        "201":
+          description: New user and profile created 
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "409":
+          description: The profile with specified login exists already
+        "500":
+          description: Internal server error
+
+  /auth/login:
+    post:
+      summary: Login the user
+      description: logins the user and creates temporary token
+      operationId: login
+      tags:
+        - users
+        
+      requestBody:
+        description: information for user login
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              login: johnny
+              password: zzss22 #coded password
+     
+      responses:
+        "200":
+          $ref: '#/components/schemas/LoginResponse'
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "403":
+          description: Invalid login or password
+        "500":
+          description: Internal server error
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      description: Basic http authentication
+      scheme: basic
+    keyAuth:
+      type: apiKey
+      description: API key to authorize requests.
+      in: header
+      name: api_key
+  responses:
+    UnauthorizedErr:
+      description: API key and/or basicAuth are invalid or missing
+      headers:
+        WWW_Authenticate:
+          description: Unauthorized
+          schema:
+            type: string
+  schemas:
+    LoginRequest:
+      type: object
+      properties: 
+        login:
+          type: string
+        password:
+          type: string
+      required:
+        - login
+        - password 
+      example:
+          login: johnny
+          password: zzss22 #coded password
+          
+    RegistrationRequest:
+      type: object
+      properties: 
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        social_media_links:
+          type: array
+          items:
+            type: string
+        login:
+          type: string
+        password:
+          type: string  
+      required:
+        - login
+        - password
+        - first_name
+        - last_name
+        - email
+      example:
+          login: johnny
+          password: zzss22 #coded password
+          first_name: John
+          last_name: Smith
+          email: john@gmail.com
+          social_media_links: 
+            - www.instagramm.com@johnny
+            - www.twitter.com#johnny
+          
+    LoginResponse:
+      type: object
+      properties:
+        userId: 
+          type: string
+        token:
+          type: string 
+      example:
+          login: 123456-456789-456789
+          password: abCdEFg123HiJK456
