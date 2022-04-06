@@ -5,9 +5,9 @@ import (
 )
 
 type registrationRequest struct {
-	first_name string `json: "first_name"`
-	last_name  string `json: "last_name"`
-	email      string `json: "login"`
+	firstName string `json: "first_name"`
+	lastName  string `json: "last_name"`
+	email     string `json: "login"`
 	//social_media_links `json`
 	login    string `json: "login"`
 	password string `json:"password`

@@ -16,8 +16,10 @@ var spec []byte
 func main() {
 	r := chi.NewRouter()
 
-	r.HandleFunc("/auth/register", handlers.RegisterNewUser)
-	r.HandleFunc("/auth/login", handlers.UserLogin)
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/register", handlers.RegisterNewUser)
+		r.Get("/login", handlers.UserLogin)
+	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 
 	log.Println("serving on :8080")
