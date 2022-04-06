@@ -2,18 +2,32 @@ package main
 
 import (
 	_ "embed"
-	"log"
 	"net/http"
 
 	"github.com/flowchartsman/swaggerui"
+	"github.com/go-chi/chi"
+	log "github.com/sirupsen/logrus"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 )
 
-//go:embed  api\apiauth.yaml
+//go:embed  api/apiauth.yaml
 var spec []byte
 
 func main() {
-	log.SetFlags(0)
-	http.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
+	r := chi.NewRouter()
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/register", handlers.RegisterNewUser)
+		r.Get("/login", handlers.UserLogin)
+	})
+	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
+
 	log.Println("serving on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Fatal("An error starting server")
+	}
+
 }
