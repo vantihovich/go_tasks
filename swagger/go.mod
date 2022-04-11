@@ -4,8 +4,7 @@ go 1.17
 
 require (
 	github.com/flowchartsman/swaggerui v0.0.0-20210303154956-0e71c297862e
-	github.com/go-chi/chi v1.5.4
-	github.com/go-chi/valve v0.0.0-20170920024740-9e45288364f4
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/sirupsen/logrus v1.8.1
 )
 

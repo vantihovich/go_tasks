@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type registrationRequest struct {
@@ -16,11 +14,7 @@ type registrationRequest struct {
 }
 
 func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
-	//Below code is for testing purposes
-	log.Println("register request came to func")
-	log.Println("register request handeled successfully ")
-	w.Write([]byte("Handeled the request "))
-	//w.WriteHeader(http.StatusNotImplemented)// will be instead of testing code
+	w.WriteHeader(http.StatusNotImplemented)
 }
 
 type loginRequest struct {
@@ -29,7 +23,6 @@ type loginRequest struct {
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
-	log.Println("login request came ")
 	w.WriteHeader(http.StatusNotImplemented)
 
 	// w.Header().Set("Content-Type", "application/json")
