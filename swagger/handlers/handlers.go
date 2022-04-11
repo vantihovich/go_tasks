@@ -41,3 +41,12 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	// }
 
 }
+
+func GracefulLoginHandler() {
+	//possible place to hold graceful shutdown logic here
+}
+
+func GracefulRegisterHandler() {
+	//possible place to hold graceful shutdown logic here
+
+}
