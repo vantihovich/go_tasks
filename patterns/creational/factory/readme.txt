@@ -1,0 +1,1 @@
+Factory method is used for logistic company to manage(in example to add new) delivery types.
