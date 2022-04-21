@@ -4,7 +4,7 @@ import "fmt"
 
 //common interface for invoker and receiver
 type command interface {
-	execute()
+	execute() int
 }
 
 //bet aggregator contains the number of total bets placed , this is receiver
@@ -27,13 +27,15 @@ type placeBetCommand struct {
 }
 
 //the placeBet command itself, it implements the "command" interface with it`s "execute" method
-func (pb *placeBetCommand) execute() {
+func (pb *placeBetCommand) execute() int {
 	//increase the number of placed bets
 	pb.aggregator.totalBets += 1
 	fmt.Printf("The bet is placed, total number of bets is: %d\n", pb.aggregator.totalBets)
+
+	return pb.aggregator.totalBets
 }
 
-//adding method to betAggregator in order to create the instance of the command
+//placeBet - method for creating the instance of the command
 func (ba *betAggregator) placeBet() command {
 	return &placeBetCommand{
 		aggregator: ba,
@@ -52,7 +54,6 @@ func (bm *BookMaker) executeCommand() {
 }
 
 func main() {
-
 	ba := NewBetAggregator()
 
 	tasks := []command{
@@ -61,15 +62,13 @@ func main() {
 		ba.placeBet(),
 	}
 
-	placers := &BookMaker{}
+	placers := &BookMaker{} //creating the instance of executor
 
 	for _, task := range tasks {
-		bookmaker := placers
-		bookmaker.Commands = append(bookmaker.Commands, task)
+		placers.Commands = append(placers.Commands, task)
 	}
 
 	placers.executeCommand()
 
 	fmt.Println("total bets are:", ba.totalBets)
-
 }

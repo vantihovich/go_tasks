@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -27,9 +28,13 @@ type ProxyObject struct {
 }
 
 func (po *ProxyObject) Read() {
+	err := errors.New("username not provided")
+
 	if po.Reader.User == "Alice" {
 		fmt.Println("User has an access")
 		fmt.Printf("Object:%s, Reader:%s", po.Object, po.Reader)
+	} else if po.Reader.User == "" {
+		fmt.Println(err)
 	}
 }
 

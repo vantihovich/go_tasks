@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type pizza struct {
 	doughType   string
@@ -17,16 +20,16 @@ type pizzaBuilder interface {
 	getPizza() pizza
 }
 
-func getPizzaMaker(pizzaType string) pizzaBuilder {
+func getPizzaMaker(pizzaType string) (pizzaBuilder, error) {
+	err := errors.New("Provided pizza name is not available for order")
+
 	if pizzaType == "pepperoni" {
-		return &pepperoniBuilder{}
+		return &pepperoniBuilder{}, nil
+	} else if pizzaType == "vesuvius" {
+		return &vesuviusBuilder{}, nil
+	} else {
+		return nil, err
 	}
-
-	if pizzaType == "vesuvius" {
-		return &vesuviusBuilder{}
-	}
-
-	return nil
 }
 
 type pepperoniBuilder struct {
@@ -124,8 +127,15 @@ func (d *director) makePizza() pizza {
 }
 
 func main() {
-	pepperoni := getPizzaMaker("pepperoni")
-	vesuvius := getPizzaMaker("vesuvius")
+	pepperoni, err := getPizzaMaker("pepperoni")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	vesuvius, err := getPizzaMaker("vesuvius")
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	director := newDirector(pepperoni)
 	pepperoniPizza := director.makePizza()
