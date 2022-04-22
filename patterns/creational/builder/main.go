@@ -1,157 +1,87 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 )
 
-type pizza struct {
-	doughType   string
-	sauseType   string
-	sausageType string
-	cheeseType  string
+type IngredientType string
+type PizzaIngredients map[IngredientType]*PizzaIngredient
+
+const (
+	Dough   IngredientType = "DOUGH"
+	Sause   IngredientType = "SAUSE"
+	Sausage IngredientType = "SAUSAGE"
+	Cheese  IngredientType = "CHEESE"
+)
+
+type PizzaIngredient struct {
+	Name string
+	Type IngredientType
 }
 
-type pizzaBuilder interface {
-	setDoughType()
-	setSauseType()
-	setSausageType()
-	setCheeseType()
-	getPizza() pizza
+func (pi *PizzaIngredient) String() string {
+	return fmt.Sprintf("[Ingredient name:%s, Ingredient type:%s]", pi.Name, pi.Type)
 }
 
-func getPizzaMaker(pizzaType string) (pizzaBuilder, error) {
-	err := errors.New("Provided pizza name is not available for order")
+type Pizza struct {
+	ingredients PizzaIngredients
+}
 
-	if pizzaType == "pepperoni" {
-		return &pepperoniBuilder{}, nil
-	} else if pizzaType == "vesuvius" {
-		return &vesuviusBuilder{}, nil
-	} else {
-		return nil, err
+func (p *Pizza) Show(i IngredientType) *PizzaIngredient {
+	return p.ingredients[i]
+}
+
+type PizzaBuilder interface {
+	withDough() PizzaBuilder
+	withSause() PizzaBuilder
+	withSausage() PizzaBuilder
+	withCheese() PizzaBuilder
+	build() *Pizza
+}
+
+type simplePizzaCook struct {
+	ingredients PizzaIngredients
+}
+
+func newSimplePizzaCook() PizzaBuilder {
+	return &simplePizzaCook{
+		ingredients: make(PizzaIngredients),
 	}
 }
 
-type pepperoniBuilder struct {
-	doughType   string
-	sauseType   string
-	sausageType string
-	cheeseType  string
+func (c *simplePizzaCook) withDough() PizzaBuilder {
+	c.ingredients[Dough] = &PizzaIngredient{"Thin dough", Dough}
+	return c
 }
 
-func newPepperoniBuilder() *pepperoniBuilder {
-	return &pepperoniBuilder{}
+func (c *simplePizzaCook) withSause() PizzaBuilder {
+	c.ingredients[Sause] = &PizzaIngredient{"Tomato sause", Sause}
+	return c
 }
 
-func (pb *pepperoniBuilder) setDoughType() {
-	pb.doughType = "thin"
+func (c *simplePizzaCook) withSausage() PizzaBuilder {
+	c.ingredients[Sausage] = &PizzaIngredient{"Pepperoni sausage", Sausage}
+	return c
 }
 
-func (pb *pepperoniBuilder) setSauseType() {
-	pb.sauseType = "tomato"
+func (c *simplePizzaCook) withCheese() PizzaBuilder {
+	c.ingredients[Cheese] = &PizzaIngredient{"Mozarella cheese", Cheese}
+	return c
 }
 
-func (pb *pepperoniBuilder) setSausageType() {
-	pb.sausageType = "pepperoni"
-}
-
-func (pb *pepperoniBuilder) setCheeseType() {
-	pb.cheeseType = "mozarella"
-}
-
-func (pb *pepperoniBuilder) getPizza() pizza {
-	return pizza{
-		doughType:   pb.doughType,
-		sauseType:   pb.sauseType,
-		sausageType: pb.sausageType,
-		cheeseType:  pb.cheeseType,
+func (c *simplePizzaCook) build() *Pizza {
+	return &Pizza{
+		ingredients: c.ingredients,
 	}
-}
-
-type vesuviusBuilder struct {
-	doughType   string
-	sauseType   string
-	sausageType string
-	cheeseType  string
-}
-
-func newVesuviusBuilder() *vesuviusBuilder {
-	return &vesuviusBuilder{}
-}
-
-func (vb *vesuviusBuilder) setDoughType() {
-	vb.doughType = "thick"
-}
-
-func (vb *vesuviusBuilder) setSauseType() {
-	vb.sauseType = "big tasty"
-}
-
-func (vb *vesuviusBuilder) setSausageType() {
-	vb.sausageType = "ham"
-}
-
-func (vb *vesuviusBuilder) setCheeseType() {
-	vb.cheeseType = "parmesan"
-}
-
-func (vb *vesuviusBuilder) getPizza() pizza {
-	return pizza{
-		doughType:   vb.doughType,
-		sauseType:   vb.sauseType,
-		sausageType: vb.sausageType,
-		cheeseType:  vb.cheeseType,
-	}
-}
-
-type director struct {
-	builder pizzaBuilder
-}
-
-func newDirector(p pizzaBuilder) *director {
-	return &director{
-		builder: p,
-	}
-}
-
-func (d *director) setBuilder(p pizzaBuilder) {
-	d.builder = p
-}
-
-func (d *director) makePizza() pizza {
-	d.builder.setDoughType()
-	d.builder.setSauseType()
-	d.builder.setSausageType()
-	d.builder.setCheeseType()
-	return d.builder.getPizza()
 }
 
 func main() {
-	pepperoni, err := getPizzaMaker("pepperoni")
-	if err != nil {
-		fmt.Println(err)
-	}
+	pizza := newSimplePizzaCook().withDough().withSause().withSausage().build()
 
-	vesuvius, err := getPizzaMaker("vesuvius")
-	if err != nil {
-		fmt.Println(err)
-	}
+	fmt.Println("Pizza contains:", pizza.Show(Dough))
+	fmt.Println("Pizza contains:", pizza.Show(Sause))
+	fmt.Println("Pizza contains:", pizza.Show(Sausage))
+	fmt.Println("Pizza contains:", pizza.Show(Cheese))
 
-	director := newDirector(pepperoni)
-	pepperoniPizza := director.makePizza()
-
-	fmt.Printf("pepperoni doughType: %s\n", pepperoniPizza.doughType)
-	fmt.Printf("pepperoni sauseType: %s\n", pepperoniPizza.sauseType)
-	fmt.Printf("pepperoni sausageType: %s\n", pepperoniPizza.sausageType)
-	fmt.Printf("pepperoni cheeseType: %s\n", pepperoniPizza.cheeseType)
-
-	fmt.Println("-----------")
-
-	director.setBuilder(vesuvius)
-	vesuviusPizza := director.makePizza()
-
-	fmt.Printf("vesuvius doughType: %s\n", vesuviusPizza.doughType)
-	fmt.Printf("vesuvius sauseType: %s\n", vesuviusPizza.sauseType)
-	fmt.Printf("vesuvius sausageType: %s\n", vesuviusPizza.sausageType)
-	fmt.Printf("vesuvius cheeseType: %s\n", vesuviusPizza.cheeseType)
+	fmt.Println("Method `withCheese` was not called, so works as expected))")
 }
