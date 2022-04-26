@@ -1,100 +1,102 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
-type publisher interface {
-	addObserver(Observer observer)
-	removeObserver(Observer observer)
-	notify() //notifying subscriber
-}
+type (
+	// Event defines an indication of a point-in-time occurrence.
+	Event struct {
+		// Data in this case is a simple name of the magazine that has new edition
+		Data string
+	}
+	// Observer defines a standard interface for instances that wish to list for
+	// the occurrence of a specific event.
+	Observer interface {
+		// update method allows an event to be "published" to interface implementations.
+		update(Event)
+	}
+	Publisher interface {
+		addObserver(Observer)
+		removeObserver(Observer)
+		// notify publishes new events to listeners.
+		notify(Event)
+	}
+)
 
-type observer interface {
-	update(string)
-	getID() string
-}
+type (
+	eventObserver struct {
+		name string
+	}
 
-//the subject of interest from observers side
-type item struct {
-	observerList []observer
-	name         string
-	in           bool
-}
+	eventNotifier struct {
+		// Using a map with an empty struct allows us to keep the observers
+		// unique while still keeping memory usage relatively low.
+		observers map[Observer]struct{}
+	}
+)
 
-//creating new instance of item
-func newItem(name string) *item {
-	return &item{
-		name: name,
+func newEvent(data string) Event {
+	return Event{
+		Data: data,
 	}
 }
 
-// updating the state of object of interest
-func (i item) updateAvailability() {
-	fmt.Printf("Item %q is now available\n", i.name)
-	i.in = true
-	i.notify() //calling notifying func for subscribed observers
+func (o *eventObserver) update(e Event) {
+	fmt.Printf("Sending notification to customer %s for item %q\n", o.name, e.Data)
 }
 
-//adding new observer to the list
-func (i *item) addObserver(o observer) {
-	i.observerList = append(i.observerList, o)
+func (o *eventNotifier) addObserver(l Observer) {
+	o.observers[l] = struct{}{}
 }
 
-//deleting observer from the list
-func (i *item) removeObserver(o observer) {
-	i.observerList = removeFromSlice(i.observerList, o)
-}
-
-//notifying function that calls update method from observer side
-func (i *item) notify() {
-	for _, t := range i.observerList {
-		t.update(i.name)
-	}
-}
-
-// makes the list shorter by deleting the observer with signed name
-func removeFromSlice(observerList []observer, observerToRemove observer) []observer {
-	observerListLength := len(observerList)
-	for i, observer := range observerList {
-		if observerToRemove.getID() == observer.getID() {
-			observerList[observerListLength-1], observerList[i] = observerList[i], observerList[observerListLength-1]
-			return observerList[:observerListLength-1]
+func (o *eventNotifier) removeObserver(l Observer) {
+	// need to use range and reflect.DeepEqual because standard "delete(map, key)"
+	// can not find the provided in l key
+	for m := range o.observers {
+		if reflect.DeepEqual(m, l) {
+			delete(o.observers, m)
+			fmt.Println("Succesfully deleted user from the dispatch list")
+			return
 		}
 	}
-	return observerList
+	fmt.Println("Provided for deletion observer name not found in dispatch list")
 }
 
-//the object that is interested in notification
-type subscriber struct {
-	id string
-}
-
-//the func that sends notification to the ineterested object
-func (c *subscriber) update(itemName string) {
-	fmt.Printf("Sending notification to customer %s for item %q\n", c.id, itemName)
-}
-
-// func for getting interested object`s id
-func (c *subscriber) getID() string {
-	return c.id
+func (p eventNotifier) notify(e Event) {
+	fmt.Printf("Item %q is now available\n", e.Data)
+	for o := range p.observers {
+		o.update(e)
+	}
 }
 
 func main() {
+	//Initialize new event
+	magazineEvent := newEvent("The Economist")
 
-	magazineItem := newItem("The economist") // creating new instance of object of interest
+	// Initialize a new Notifier.
+	n := eventNotifier{
+		observers: map[Observer]struct{}{},
+	}
 
-	observerOne := &subscriber{id: "Alice"} //defining "subscribers"
-	observerTwo := &subscriber{id: "Tom"}
-	observerThree := &subscriber{id: "Frank"}
+	// Register some observers.
+	n.addObserver(&eventObserver{name: "Alice"})
+	n.addObserver(&eventObserver{name: "Tom"})
+	n.addObserver(&eventObserver{name: "Kate"})
 
-	magazineItem.addObserver(observerOne) // adding subscribers to the "dispatch" list
-	magazineItem.addObserver(observerTwo)
-	magazineItem.addObserver(observerThree)
+	//creating the changing state event
+	n.notify(magazineEvent)
 
-	magazineItem.updateAvailability() //creating the changing state ivent
+	//Remove one concrete observer to check the deletion(no such data in the dispatch list)
+	n.removeObserver(&eventObserver{name: "Tommy"})
 
-	//now checking the new list of the observers
+	//creating the changing state event
+	n.notify(magazineEvent)
 
-	magazineItem.removeObserver(observerThree) // deleting 1 subscriber
+	//Remove one concrete observer to check the deletion
+	n.removeObserver(&eventObserver{name: "Tom"})
 
-	magazineItem.updateAvailability() //creating the changing state ivent
+	//creating the changing state event
+	n.notify(magazineEvent)
 }
