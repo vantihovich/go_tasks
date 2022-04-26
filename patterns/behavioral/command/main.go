@@ -56,12 +56,6 @@ func (bm *BookMaker) executeCommand() {
 func main() {
 	ba := NewBetAggregator()
 
-	// tasks := []command{
-	// 	ba.placeBet(),
-	// 	ba.placeBet(),
-	// 	ba.placeBet(),
-	// }
-
 	placers := &BookMaker{} //creating the instance of executor
 
 	placers.Commands = append(placers.Commands, ba.placeBet(), ba.placeBet(), ba.placeBet())
