@@ -3,11 +3,8 @@ package main
 import "fmt"
 
 type commonTransport interface {
-	setName(name string)
 	getName() string
-	setMaxWeight(maxWeight string)
 	getMaxWeight() string
-	setType(transpType string)
 	getType() string
 }
 
@@ -17,24 +14,12 @@ type transport struct {
 	transpType string
 }
 
-func (t *transport) setName(name string) {
-	t.name = name
-}
-
 func (t *transport) getName() string {
 	return t.name
 }
 
-func (t *transport) setMaxWeight(maxWeight string) {
-	t.maxWeight = maxWeight
-}
-
 func (t *transport) getMaxWeight() string {
 	return t.maxWeight
-}
-
-func (t *transport) setType(transpType string) {
-	t.transpType = transpType
 }
 
 func (t *transport) getType() string {
@@ -69,6 +54,7 @@ func newShip() commonTransport {
 	}
 }
 
+// factory starts here :)
 func getTransport(transpType string) (commonTransport, error) {
 	if transpType == "ship" {
 		return newShip(), nil
@@ -82,8 +68,6 @@ func getTransport(transpType string) (commonTransport, error) {
 func main() {
 	ship, _ := getTransport("ship")
 	truck, _ := getTransport("truck")
-
-	fmt.Println("check")
 
 	printTransport(ship)
 	printTransport(truck)
