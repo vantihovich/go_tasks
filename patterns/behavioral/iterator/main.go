@@ -40,12 +40,13 @@ func (u *userIterator) hasNext() bool {
 }
 
 func (u *userIterator) getNext() *user {
-	if u.hasNext() {
-		user := u.users[u.index]
-		u.index++
-		return user
+	if !u.hasNext() {
+		return nil
 	}
-	return nil
+
+	user := u.users[u.index]
+	u.index++
+	return user
 }
 
 func main() {
@@ -75,5 +76,4 @@ func main() {
 		user := iterator.getNext()
 		fmt.Printf("User is %+v\n", user)
 	}
-
 }
