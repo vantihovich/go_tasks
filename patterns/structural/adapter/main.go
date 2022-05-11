@@ -35,7 +35,6 @@ func (w *windowsAdapter) insertIntoLightningPort() {
 }
 
 func main() {
-
 	client := &client{}
 	mac := &mac{}
 

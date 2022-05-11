@@ -50,7 +50,6 @@ func (u *userIterator) getNext() *user {
 }
 
 func main() {
-
 	user1 := &user{
 		name: "Stacy",
 		age:  28,

@@ -47,7 +47,6 @@ func (f *folder) clone() node {
 }
 
 func main() {
-
 	file1 := &file{name: "File1"}
 	file2 := &file{name: "File2"}
 	file3 := &file{name: "File3"}
