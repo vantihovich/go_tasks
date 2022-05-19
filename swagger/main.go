@@ -9,10 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
+
 	"github.com/flowchartsman/swaggerui"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
+	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 )
 
@@ -65,21 +68,35 @@ func main() {
 }
 
 func service() http.Handler {
+
+	log.WithFields(log.Fields{}).Info("Configs loading")
+
+	cfg, err := cnfg.Load()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Panic("Failed to load app config")
+	}
+
+	log.WithFields(log.Fields{}).Info("Connecting to DB")
+	db := postgr.New(cfg)
+	if err := db.Open(); err != nil {
+		log.WithFields(log.Fields{}).Panic("Failed to establish DB connection")
+	}
+
+	UsersProvider := handlers.NewUsersHandler(db)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 
 	r.Route("/auth", func(r chi.Router) {
-
-		r.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 			handlers.RegisterNewUser(w, r)
 		})
 
-		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-			handlers.UserLogin(w, r)
-		})
-
+		r.Post("/login", UsersProvider.UserLogin)
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r
