@@ -17,7 +17,7 @@ servers:
       environment:
         default: api    # Production server
         enum:
-          - api.         # Production server
+          - api         # Production server
           - api.dev     # Development server
           - api.staging # Staging server
 
@@ -77,6 +77,8 @@ paths:
       responses:
         "200":
           $ref: '#/components/schemas/LoginResponse'
+        "400":
+          description: Invalid request body   
         "401":
           $ref: '#/components/responses/UnauthorizedErr'
         "403":
@@ -159,5 +161,5 @@ components:
         token:
           type: string 
       example:
-          login: 123456-456789-456789
-          password: abCdEFg123HiJK456
+          userId: 123456-456789-456789
+          token: abCdEFg123HiJK456

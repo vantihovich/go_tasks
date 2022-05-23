@@ -13,7 +13,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
+
+	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
+	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
 )
 
 //go:embed  api/apiauth.yaml
@@ -31,9 +34,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
-
 		<-sig
-
 		shutDownCtx, shutDownCnclFunc := context.WithTimeout(serverCtx, 30*time.Second)
 
 		go func() {
@@ -44,42 +45,46 @@ func main() {
 		}()
 
 		if err := srv.Shutdown(shutDownCtx); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Fatal("Could not shutdown the server")
+			log.WithError(err).Fatal("Could not shutdown the server")
 		}
 
 		serverStopCtx()
 		shutDownCnclFunc()
-
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Fatal("An error starting server")
+		log.WithError(err).Fatal("An error starting server")
 	}
 
 	<-serverCtx.Done()
-
 }
 
 func service() http.Handler {
+	log.Info("Configs loading")
+
+	cfg, err := cnfg.Load()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load app config")
+	}
+
+	log.Info("Connecting to DB")
+	db := postgr.New(cfg)
+	if err := db.Open(); err != nil {
+		log.WithError(err).Fatal("Failed to establish connection with DB")
+	}
+
+	UsersProvider := handlers.NewUsersHandler(&db)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 
 	r.Route("/auth", func(r chi.Router) {
-
-		r.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
 			handlers.RegisterNewUser(w, r)
 		})
-
-		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-			handlers.UserLogin(w, r)
-		})
-
+		r.Post("/login", UsersProvider.UserLogin)
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r
