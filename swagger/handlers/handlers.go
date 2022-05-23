@@ -17,16 +17,6 @@ func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-type loginRequest struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
-}
-
-type loginResponse struct {
-	UserID string `json:"userId"`
-	Token  string `json:"token"`
-}
-
 type UsersHandler struct {
 	userRepo models.UserRepository
 }
@@ -35,6 +25,16 @@ func NewUsersHandler(userRepo models.UserRepository) *UsersHandler {
 	return &UsersHandler{
 		userRepo: userRepo,
 	}
+}
+
+type loginRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	UserID string `json:"userId"`
+	Token  string `json:"token"`
 }
 
 var ErrNoRows = errors.New("no users with provided credentials were found in database")

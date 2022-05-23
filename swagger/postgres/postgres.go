@@ -41,8 +41,7 @@ func (db *DB) FindByLoginAndPwd(Login, Password string) (*models.User, error) {
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithError(err).Error("err executing or parsing the request to DB")
-			err = handlers.ErrNoRows
-			return nil, err
+			return nil, handlers.ErrNoRows
 		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
