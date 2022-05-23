@@ -77,6 +77,8 @@ paths:
       responses:
         "200":
           $ref: '#/components/schemas/LoginResponse'
+        "400":
+          description: Invalid request body   
         "401":
           $ref: '#/components/responses/UnauthorizedErr'
         "403":

@@ -2,26 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v4"
 	log "github.com/sirupsen/logrus"
-	"github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 )
-
-// Not implemented yet
-// type registrationRequest struct {
-// 	firstName          string   `json: "first_name"`
-// 	lastName           string   `json: "last_name"`
-// 	email              string   `json: "login"`
-// 	social_media_links []string `json: "social_media_links"`
-// 	login              string   `json: "login"`
-// 	password           string   `json: "password`
-// }
 
 func RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -33,19 +23,21 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	UserId string `json:"userId"`
+	UserID string `json:"userId"`
 	Token  string `json:"token"`
 }
 
 type UsersHandler struct {
-	userRepo postgres.DB
+	userRepo models.UserRepository
 }
 
-func NewUsersHandler(userRepo postgres.DB) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository) *UsersHandler {
 	return &UsersHandler{
 		userRepo: userRepo,
 	}
 }
+
+var ErrNoRows = errors.New("no users with provided credentials were found in database")
 
 func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -53,34 +45,31 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	response := loginResponse{}
 
 	err := json.NewDecoder(r.Body).Decode(&parameters)
-
 	if err != nil {
 		if err == io.EOF {
-			log.WithFields(log.Fields{"Error": err}).Info("Error empty request body")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		} else {
-			log.WithFields(log.Fields{"Error": err}).Info("Error occurred")
-			w.WriteHeader(http.StatusInternalServerError)
+			log.WithError(err).Info("Empty request body")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		log.WithError(err).Info("Error occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	err = h.userRepo.QueryRow("SELECT user_id FROM users WHERE login=$1 AND password=$2 ", parameters.Login, parameters.Password).Scan(&response.UserId)
-
+	user, err := h.userRepo.FindByLoginAndPwd(parameters.Login, parameters.Password)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			log.WithFields(log.Fields{"Error": err}).Info("No rows found")
+		if err == ErrNoRows {
+			log.WithError(err).Error("No rows found")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Please check user login or password"))
 			return
-		} else {
-			log.WithFields(log.Fields{"Error": err}).Info("DB request returned error")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
+		log.WithError(err).Info("DB request returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	log.WithFields(log.Fields{}).Info("User found in DB")
+
+	response.UserID = user.UserID
 
 	//at this moment token is just a random integer from 1 up to 100
 	//TODO implement JWT
@@ -95,7 +84,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		log.WithFields(log.Fields{"Error": err}).Info("Error encoding struct to JSON")
+		log.WithError(err).Info("Error encoding struct to JSON")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

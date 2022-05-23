@@ -9,7 +9,7 @@ type Database struct {
 	Port     int    `env:"DBPORT,required"`
 	User     string `env:"DBUSER,required"`
 	Password string `env:"DBPASSWORD,required"`
-	Database string `env:"DBDATABASE,required"`
+	Name     string `env:"DBNAME,required"`
 }
 
 type App struct {
@@ -17,7 +17,6 @@ type App struct {
 }
 
 func Load() (App, error) {
-
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
 		return App{}, err
