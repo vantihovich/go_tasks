@@ -48,5 +48,33 @@ func (db *DB) FindByLoginAndPwd(Login, Password string) (*models.User, error) {
 	}
 
 	log.WithFields(log.Fields{"UserID": user.UserID}).Info("User found in DB")
-	return user, err
+	return user, nil
+}
+
+func (db *DB) FindLogin(Login string) error {
+	var user *models.User = &(models.User{})
+	err := db.pool.QueryRow(context.Background(), "SELECT user_id FROM users WHERE login=$1 ", Login).Scan(&user.UserID)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithError(err).Error("err executing or parsing the request to DB")
+			return handlers.ErrNoRows
+		}
+		log.WithError(err).Error("err executing or parsing the request to DB")
+		return err
+	}
+	log.Info("Provided login found in DB")
+	return nil
+}
+
+func (db *DB) AddNewUser(Login, Password, FirstName, LastName, Email string, SocialMediaLinks []string) error {
+	stmnt := "INSERT INTO users (login, password, first_name, last_name, email, social_media_links) VALUES ($1, $2, $3, $4, $5, $6)"
+	_, err := db.pool.Exec(context.Background(), stmnt, Login, Password, FirstName, LastName, Email, SocialMediaLinks)
+	if err != nil {
+		log.WithError(err).Error("err executing the DB request to add new user")
+		return err
+	}
+
+	log.Info("Successfully added user to DB")
+	return nil
 }

@@ -81,9 +81,7 @@ func service() http.Handler {
 	r.Use(middleware.Logger)
 
 	r.Route("/auth", func(r chi.Router) {
-		r.Post("/register", func(w http.ResponseWriter, r *http.Request) {
-			handlers.RegisterNewUser(w, r)
-		})
+		r.Post("/register", UsersProvider.RegisterNewUser)
 		r.Post("/login", UsersProvider.UserLogin)
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
