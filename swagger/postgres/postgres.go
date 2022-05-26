@@ -40,14 +40,14 @@ func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*m
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			log.WithError(err).Error("err executing or parsing the request to DB")
+			log.WithField("User not found", err).Debug("Valid error when login is not found")
 			return nil, handlers.ErrNoRows
 		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
 	}
 
-	log.WithFields(log.Fields{"user_id": user.UserID}).Info("User found in DB")
+	log.WithFields(log.Fields{"user_id": user.UserID}).Debug("User found in DB")
 	return user, nil
 }
 
@@ -57,13 +57,13 @@ func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			log.WithError(err).Error("err executing or parsing the request to DB")
+			log.WithField("User not found", err).Debug("Valid error when login is not found")
 			return false, nil
 		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return false, err
 	}
-	log.Info("Provided login found in DB")
+	log.Debug("Provided login found in DB")
 	return true, nil
 }
 

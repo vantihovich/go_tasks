@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -37,7 +36,7 @@ type registrationRequest struct {
 }
 
 func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := registrationRequest{}
 
@@ -77,7 +76,7 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("Login not found in DB, registration is allowed to proceed with provided login")
+	log.Debug("Login not found in DB, registration is allowed to proceed with provided login")
 
 	//an attempt to add new user
 	err = h.userRepo.AddNewUser(ctx, parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
@@ -87,7 +86,7 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("User added succesfully")
+	log.Debug("User added succesfully")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("User registered successfully"))
 }
@@ -103,7 +102,7 @@ type loginResponse struct {
 }
 
 func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
+	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := loginRequest{}
 	response := loginResponse{}
