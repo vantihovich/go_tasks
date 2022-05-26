@@ -34,9 +34,9 @@ func (db *DB) Open() error {
 	return nil
 }
 
-func (db *DB) FindByLoginAndPwd(Login, Password string) (*models.User, error) {
-	var user *models.User = &(models.User{})
-	err := db.pool.QueryRow(context.Background(), "SELECT user_id FROM users WHERE login=$1 AND password=$2", Login, Password).Scan(&user.UserID)
+func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*models.User, error) {
+	var user *models.User = &models.User{}
+	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 AND password=$2", login, password).Scan(&user.UserID)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -47,34 +47,34 @@ func (db *DB) FindByLoginAndPwd(Login, Password string) (*models.User, error) {
 		return nil, err
 	}
 
-	log.WithFields(log.Fields{"UserID": user.UserID}).Info("User found in DB")
+	log.WithFields(log.Fields{"user_id": user.UserID}).Info("User found in DB")
 	return user, nil
 }
 
-func (db *DB) FindLogin(Login string) error {
-	var user *models.User = &(models.User{})
-	err := db.pool.QueryRow(context.Background(), "SELECT user_id FROM users WHERE login=$1 ", Login).Scan(&user.UserID)
+func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error) {
+	var user *models.User = &models.User{}
+	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 ", login).Scan(&user.UserID)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithError(err).Error("err executing or parsing the request to DB")
-			return handlers.ErrNoRows
+			return false, nil
 		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
-		return err
+		return false, err
 	}
 	log.Info("Provided login found in DB")
-	return nil
+	return true, nil
 }
 
-func (db *DB) AddNewUser(Login, Password, FirstName, LastName, Email string, SocialMediaLinks []string) error {
+func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error {
 	stmnt := "INSERT INTO users (login, password, first_name, last_name, email, social_media_links) VALUES ($1, $2, $3, $4, $5, $6)"
-	_, err := db.pool.Exec(context.Background(), stmnt, Login, Password, FirstName, LastName, Email, SocialMediaLinks)
+	_, err := db.pool.Exec(ctx, stmnt, login, password, firstName, lastName, email, socialMediaLinks)
 	if err != nil {
 		log.WithError(err).Error("err executing the DB request to add new user")
 		return err
 	}
 
-	log.Info("Successfully added user to DB")
+	log.Debug("Successfully added user to DB")
 	return nil
 }

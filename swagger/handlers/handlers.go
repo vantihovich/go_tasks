@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
 type UsersHandler struct {
@@ -28,13 +30,14 @@ var ErrNoRows = errors.New("no users with provided credentials were found in dat
 type registrationRequest struct {
 	Login            string   `json:"login"`
 	Password         string   `json:"password"`
-	FirstName        string   `json:"firstName"`
-	LastName         string   `json:"lastName"`
+	FirstName        string   `json:"first_name"`
+	LastName         string   `json:"last_name"`
 	Email            string   `json:"email"`
-	SocialMediaLinks []string `json:"socialMediaLinks"`
+	SocialMediaLinks []string `json:"social_media_links"`
 }
 
 func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := registrationRequest{}
 
@@ -52,28 +55,32 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 
 	//check if obligatory fields are fullfilled, although looks like it should be done
 	//when the json body is formed
-	if parameters.Login == "" || parameters.Password == "" || parameters.FirstName == "" || parameters.LastName == "" || parameters.Email == "" {
+	valid := validators.ValidateRegistrationRequest(parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email)
+	if !valid {
 		log.Error("One or several obligatory fields in the request body are empty")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	//check if login is unique
-	err = h.userRepo.FindLogin(parameters.Login)
-	if err == nil {
-		log.Info("Login exists already")
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Please choose another login"))
-		return
-	} else if err != ErrNoRows {
+	exists, err := h.userRepo.CheckIfLoginExists(ctx, parameters.Login)
+	if err != nil {
 		log.WithError(err).Info("DB request of login returned error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	if exists {
+		log.Info("Login exists already")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Please choose another login"))
+		return
+	}
+
 	log.Info("Login not found in DB, registration is allowed to proceed with provided login")
 
 	//an attempt to add new user
-	err = h.userRepo.AddNewUser(parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
+	err = h.userRepo.AddNewUser(ctx, parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
 	if err != nil {
 		log.WithError(err).Info("Error occurred when adding user to DB")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -81,7 +88,7 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("User added succesfully")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("User registered successfully"))
 }
 
@@ -91,11 +98,12 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	UserID int    `json:"userId"`
+	UserID int    `json:"user_id"`
 	Token  string `json:"token"`
 }
 
 func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := loginRequest{}
 	response := loginResponse{}
@@ -112,7 +120,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userRepo.FindByLoginAndPwd(parameters.Login, parameters.Password)
+	user, err := h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.Password)
 	if err != nil {
 		if err == ErrNoRows {
 			log.WithError(err).Error("No rows found")
