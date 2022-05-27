@@ -83,6 +83,64 @@ paths:
           $ref: '#/components/responses/UnauthorizedErr'
         "403":
           description: Invalid login or password
+        "429":
+          description: Attempts limit is reached
+        "500":
+          description: Internal server error
+
+  /auth/deactivate:
+    post:
+      summary: Deactivate user
+      description:  Deactivation for user not to be able to login
+      operationId: deactivateUser
+      tags:
+        - users
+
+      requestBody:
+        description: information required for searching the user 
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/DeactivationRequest'
+            example:
+              login: johnny
+      
+      responses:
+        "200":
+          description: deactivated cuccessfully 
+        "400":
+          description: Invalid request body   
+        "403":
+          description: Invalid login - doesn`t exist in DB
+        "500":
+          description: Internal server error
+
+  /auth/passwordReset:
+    post:
+      summary: Password reset 
+      description:  Feature provides an opportunity for user to reset the password
+      operationId: resetPassword
+      tags:
+        - users
+
+      requestBody:
+        description: login and new password
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/LoginRequest'
+      
+      responses:
+        "201":
+          description: New password for user is created 
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "403":
+          description: Invalid login - doesn`t exist in DB
         "500":
           description: Internal server error
 
@@ -117,8 +175,18 @@ components:
         - login
         - password 
       example:
-          login: johnny
-          password: zzss22 #coded password
+        login: johnny
+        password: zzss22 #coded password
+
+    DeactivationRequest:
+      type: object
+      properties:
+        login:
+          type: string
+      required:
+          - login
+      example:
+          login : johnny
           
     RegistrationRequest:
       type: object
