@@ -76,7 +76,11 @@ paths:
      
       responses:
         "200":
-          $ref: '#/components/schemas/LoginResponse'
+          description: The input is correct
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'       
         "400":
           description: Invalid request body   
         "401":
@@ -110,7 +114,7 @@ paths:
         content: 
           application/json:
             schema: 
-              $ref: '#/components/schemas/DeactivationRequest'
+              $ref: '#/components/schemas/DeactivationRequest' 
             example:
               login: johnny
       
@@ -209,14 +213,17 @@ paths:
         content: 
           application/json:
             schema: 
-              $ref: '#/components/schemas/ForgotPWDRequestPt2'
+              $ref: '#/components/schemas/ForgotPWDSecretConfirmationRequest'
             example:
               secret: blablabla234
       
       responses:
         "200":
-          description: The input is correct
-          $ref: '#/components/schemas/ForgotPWDResponsePt2'
+            description: The input is correct
+            content: 
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ForgotPWDSecretConfirmationResponse'
         "400":
           description: Bad request
         "401":
@@ -240,7 +247,7 @@ paths:
         content: 
           application/json:
             schema: 
-              $ref: '#/components/schemas/ForgotPWDRequestPt3'
+              $ref: '#/components/schemas/ForgotPWDSetNewPWDRequest'
             example:
               user_id: user1
               new_password: "1234"
@@ -277,6 +284,19 @@ components:
           description: Unauthorized
           schema:
             type: string
+    ForgotPWDSecretConfirmationResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        secret: 
+          type: string
+      required:
+          - user_id
+          - secret
+      example:
+          user_id: user1
+          secret: blablabla234
   schemas:
     LoginRequest:
       type: object
@@ -310,7 +330,7 @@ components:
           - email
       example:
           email: example@mail.com
-    ForgotPWDRequestPt2:
+    ForgotPWDSecretConfirmationRequest:
       type: object
       properties:
         secret: 
@@ -318,8 +338,8 @@ components:
       required:
           - secret
       example:
-          secret: blablabla234
-    ForgotPWDResponsePt2:
+          secret: blablabla234  
+    ForgotPWDSecretConfirmationResponse:
       type: object
       properties:
         user_id:
@@ -332,8 +352,7 @@ components:
       example:
           user_id: user1
           secret: blablabla234
-
-    ForgotPWDRequestPt3:
+    ForgotPWDSetNewPWDRequest:
       type: object
       properties:
         user_id: 
@@ -350,7 +369,6 @@ components:
           user_id: "user1"
           new_password: "1234"
           confirm_new_password: "1234"
-
     ResetPWDRequest:
       type: object
       properties: 
@@ -372,7 +390,6 @@ components:
         old_password: zzss22 #coded password
         new_password: ddff11 #coded password
         confirm_new_password: ddff11 #coded password
-
     DeactivationRequest:
       type: object
       properties:
@@ -381,8 +398,7 @@ components:
       required:
           - login
       example:
-          login : johnny
-          
+          login : johnny     
     RegistrationRequest:
       type: object
       properties: 
@@ -415,5 +431,4 @@ components:
           social_media_links: 
             - www.instagramm.com@johnny
             - www.twitter.com#johnny
-          
     
