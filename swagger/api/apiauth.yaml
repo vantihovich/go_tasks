@@ -76,13 +76,192 @@ paths:
      
       responses:
         "200":
-          $ref: '#/components/schemas/LoginResponse'
+          description: The input is correct
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'       
         "400":
           description: Invalid request body   
         "401":
           $ref: '#/components/responses/UnauthorizedErr'
         "403":
           description: Invalid login or password
+        "429":
+          description: Attempts limit is reached
+        "500":
+          description: Internal server error
+
+  /auth/deactivate:
+    post:
+      summary: Deactivate user
+      description:  Deactivation for user not to be able to login, can be triggered either by user himself, either by "administrator" user or process.
+      operationId: deactivateUser
+      tags:
+        - users
+
+      parameters: 
+        - in: header
+          name: Authorization
+          description: JWT is used to know if the user is authorized and allowed to perform the request
+          schema:
+            type: string
+          required: true
+
+      requestBody:
+        description: information required for searching the user , for regular user only his login will be accepted, for admin user - any login from DB 
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/DeactivationRequest' 
+            example:
+              login: johnny
+      
+      responses:
+        "200":
+          description: deactivated cuccessfully 
+        "400":
+          description: Invalid request body  
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr' 
+        "403":
+          description: User has no rights to perform operation
+        "404":
+          description: Invalid login - doesn`t exist in DB
+        "500":
+          description: Internal server error
+
+  /auth/password_reset:
+    post:
+      summary: Password reset 
+      description:  Feature provides an opportunity for user to reset the password(just for user himself)
+      operationId: resetPassword
+      tags:
+        - users
+
+      parameters: 
+        - in: header
+          name: Authorization
+          description: JWT is used to know if the user is authorized
+          schema:
+            type: string
+          required: true  
+
+      requestBody:
+        description: login, old password and new password with confirmation
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/ResetPWDRequest'
+      
+      responses:
+        "201":
+          description: New password for user is created 
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "403":
+          description: Invalid data provided
+        "500":
+          description: Internal server error
+
+
+  /auth/forgot_password:
+    post:
+      summary: Reset forgotten password 
+      description:  Feature provides an opportunity for user to reset the forgotten password, via getting an email with "secret", secret is stored in DB
+      operationId: resetForgottenPassword
+      tags:
+        - users
+
+      requestBody:
+        description: email
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/ForgotPWDRequest'
+            example:
+              email: example@mail.com
+      
+      responses:
+        "200":
+          description: The email was sent
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "404":
+          description: Provided email not found in DB
+        "500":
+          description: Internal server error
+
+  /auth/forgot_password_check_secret:
+    get:
+      summary: Reset forgotten password pt2
+      description: Checking provided by user secret 
+      operationId: resetForgottenPasswordPt2
+      tags:
+        - users
+
+      requestBody:
+        description: secret
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/ForgotPWDSecretConfirmationRequest'
+            example:
+              secret: blablabla234
+      
+      responses:
+        "200":
+            description: The input is correct
+            content: 
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ForgotPWDSecretConfirmationResponse'
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "403":
+          description: Incorrect secret provided
+        "500":
+          description: Internal server error
+
+  /auth/forgot_password_reset_password:
+    post:
+      summary: Reset forgotten password pt3
+      description: Entering new password, if "verified" attribute on the profile is true
+      operationId: resetForgottenPasswordPt3
+      tags:
+        - users
+
+      requestBody:
+        description: new password 
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/ForgotPWDSetNewPWDRequest'
+            example:
+              user_id: user1
+              new_password: "1234"
+              confirm_new_password: "1234"
+      
+      responses:
+        "201":
+          description: New password set
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
+        "403":
+          description: Provided passwords mismatch
         "500":
           description: Internal server error
 
@@ -105,6 +284,19 @@ components:
           description: Unauthorized
           schema:
             type: string
+    ForgotPWDSecretConfirmationResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        secret: 
+          type: string
+      required:
+          - user_id
+          - secret
+      example:
+          user_id: user1
+          secret: blablabla234
   schemas:
     LoginRequest:
       type: object
@@ -117,9 +309,96 @@ components:
         - login
         - password 
       example:
-          login: johnny
-          password: zzss22 #coded password
-          
+        login: johnny
+        password: zzss22 #coded password
+    LoginResponse:
+      type: object
+      properties:
+        userId: 
+          type: string
+        token:
+          type: string 
+      example:
+          userId: 123456-456789-456789
+          token: abCdEFg123HiJK456
+    ForgotPWDRequest:
+      type: object
+      properties:
+        email: 
+          type: string
+      required:
+          - email
+      example:
+          email: example@mail.com
+    ForgotPWDSecretConfirmationRequest:
+      type: object
+      properties:
+        secret: 
+          type: string
+      required:
+          - secret
+      example:
+          secret: blablabla234  
+    ForgotPWDSecretConfirmationResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        secret: 
+          type: string
+      required:
+          - user_id
+          - secret
+      example:
+          user_id: user1
+          secret: blablabla234
+    ForgotPWDSetNewPWDRequest:
+      type: object
+      properties:
+        user_id: 
+          type: string
+        new_password: 
+          type: string
+        confirm_new_password: 
+          type: string
+      required:
+          - user_id
+          - new_password
+          - confirm_new_password
+      example:
+          user_id: "user1"
+          new_password: "1234"
+          confirm_new_password: "1234"
+    ResetPWDRequest:
+      type: object
+      properties: 
+        login:
+          type: string
+        old_password:
+          type: string
+        new_password:
+          type: string
+        confirm_new_password:
+          type: string
+      required:
+        - login
+        - old_password
+        - new_password
+        - confirm_new_password
+      example:
+        login: johnny
+        old_password: zzss22 #coded password
+        new_password: ddff11 #coded password
+        confirm_new_password: ddff11 #coded password
+    DeactivationRequest:
+      type: object
+      properties:
+        login:
+          type: string
+      required:
+          - login
+      example:
+          login : johnny     
     RegistrationRequest:
       type: object
       properties: 
@@ -152,14 +431,4 @@ components:
           social_media_links: 
             - www.instagramm.com@johnny
             - www.twitter.com#johnny
-          
-    LoginResponse:
-      type: object
-      properties:
-        userId: 
-          type: string
-        token:
-          type: string 
-      example:
-          userId: 123456-456789-456789
-          token: abCdEFg123HiJK456
+    
