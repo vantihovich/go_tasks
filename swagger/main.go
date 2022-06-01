@@ -62,13 +62,18 @@ func main() {
 func service() http.Handler {
 	log.Info("Configs loading")
 
-	cfg, err := cnfg.Load()
+	cfgDB, err := cnfg.LoadDB()
 	if err != nil {
-		log.WithError(err).Fatal("Failed to load app config")
+		log.WithError(err).Fatal("Failed to load DB config")
+	}
+
+	cfgJWT, err := cnfg.LoadJWT()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load JWT config")
 	}
 
 	log.Info("Connecting to DB")
-	db := postgr.New(cfg)
+	db := postgr.New(cfgDB)
 	if err := db.Open(); err != nil {
 		log.WithError(err).Fatal("Failed to establish connection with DB")
 	}
@@ -82,7 +87,9 @@ func service() http.Handler {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", UsersProvider.RegisterNewUser)
-		r.Post("/login", UsersProvider.UserLogin)
+		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+			UsersProvider.UserLogin(w, r, cfgJWT.SecretKey)
+		})
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r

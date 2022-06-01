@@ -16,10 +16,22 @@ type App struct {
 	Database Database
 }
 
-func Load() (App, error) {
+type JWTSecret struct {
+	SecretKey string `env:"JWTSECRETKEY,required"`
+}
+
+func LoadDB() (App, error) {
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
 		return App{}, err
+	}
+	return cfg, nil
+}
+
+func LoadJWT() (JWTSecret, error) {
+	cfg := JWTSecret{}
+	if err := env.Parse(&cfg); err != nil {
+		return JWTSecret{}, err
 	}
 	return cfg, nil
 }
