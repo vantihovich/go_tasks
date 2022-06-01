@@ -102,7 +102,7 @@ type loginResponse struct {
 }
 
 type claims struct {
-	UserID int `json:"userID"`
+	UserID int `json:"user_id"`
 	jwt.StandardClaims
 }
 
