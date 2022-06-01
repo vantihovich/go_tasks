@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"math/rand"
 	"net/http"
-	"strconv"
-	"time"
 
+	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
+
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
@@ -37,6 +36,7 @@ type registrationRequest struct {
 
 func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
 	w.Header().Set("Content-Type", "application/json")
 	parameters := registrationRequest{}
 
@@ -101,7 +101,12 @@ type loginResponse struct {
 	Token  string `json:"token"`
 }
 
-func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
+type claims struct {
+	UserID int `json:"user_id"`
+	jwt.StandardClaims
+}
+
+func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtParam string) {
 	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := loginRequest{}
@@ -134,16 +139,20 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 
 	response.UserID = user.UserID
 
-	//at this moment token is just a random integer from 1 up to 100
-	//TODO implement JWT
-	token := func() string {
-		rand.Seed(time.Now().UnixMicro())
-		b := rand.Intn(100)
+	claims := &claims{
+		UserID: response.UserID,
+		StandardClaims: jwt.StandardClaims{
+			Issuer: "AuthService",
+		},
+	}
 
-		return strconv.Itoa(b)
-	}()
-
-	response.Token = token
+	jwToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	response.Token, err = jwToken.SignedString([]byte(jwtParam))
+	if err != nil {
+		log.WithError(err).Info("JWT creation returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
