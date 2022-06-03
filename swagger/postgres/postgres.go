@@ -78,3 +78,45 @@ func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastNa
 	log.Debug("Successfully added user to DB")
 	return nil
 }
+
+func (db *DB) GetAdminAttrUserLogin(ctx context.Context, userID int) (*models.User, error) {
+	var user *models.User = &models.User{}
+	stmnt := "SELECT administrator, login FROM users WHERE user_id=$1"
+
+	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Admin, &user.UserLogin)
+	if err != nil {
+		log.WithError(err).Error("err executing or parsing the request to DB")
+		return nil, err
+	}
+
+	log.Debug("Successfully obtained the data from DB")
+	return user, nil
+}
+
+func (db *DB) DeactivateUser(ctx context.Context, userLogin string) error {
+	stmnt := "UPDATE users SET active=false WHERE login=$1"
+	_, err := db.pool.Exec(ctx, stmnt, userLogin)
+	if err != nil {
+		log.WithError(err).Error("err executing the DB request to deactivate the user")
+		return err
+	}
+
+	log.Debug("Successfully deactivated the user")
+	return nil
+}
+
+func (db *DB) CheckIfUserActive(ctx context.Context, login string) (bool, error) {
+	var user *models.User = &models.User{}
+	err := db.pool.QueryRow(ctx, "SELECT active FROM users WHERE login=$1 ", login).Scan(&user.Active)
+
+	if err != nil {
+		log.WithError(err).Error("err executing or parsing the request to DB")
+		return false, err
+	}
+	log.Debug("Successfully obtained the data from DB")
+
+	if user.Active {
+		return true, nil
+	}
+	return false, nil
+}

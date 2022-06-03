@@ -90,6 +90,9 @@ func service() http.Handler {
 		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 			UsersProvider.UserLogin(w, r, cfgJWT.SecretKey)
 		})
+		r.Post("/deactivate", func(w http.ResponseWriter, r *http.Request) {
+			UsersProvider.UserDeactivation(w, r, cfgJWT.SecretKey)
+		})
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r

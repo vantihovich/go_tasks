@@ -137,6 +137,21 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 		return
 	}
 
+	//check if user is deactivated
+	active, err := h.userRepo.CheckIfUserActive(ctx, parameters.Login)
+	if err != nil {
+		log.WithError(err).Info("DB request of active attribute returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !active {
+		log.Debug("User is deactivated")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("User is deactivated"))
+		return
+	}
+
 	response.UserID = user.UserID
 
 	claims := &claims{
@@ -160,4 +175,109 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+type deactivationRequest struct {
+	Login string `json:"login"`
+}
+
+func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request, jwtParam string) {
+	ctx := r.Context()
+	parameters := deactivationRequest{}
+	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		log.Error("empty header authorization data")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	claims := &claims{}
+	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtParam), nil
+	})
+	if err != nil {
+		if err.Error() == jwt.ErrSignatureInvalid.Error() {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		log.WithError(err).Info("Error parsing the token")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !tkn.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("Empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("Error occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//check if logged in user is allowed to deactivate the user from the request
+	deactivator, err := h.userRepo.GetAdminAttrUserLogin(ctx, claims.UserID)
+	if err != nil {
+		log.WithError(err).Info("DB request returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !deactivator.Admin {
+		if deactivator.UserLogin != parameters.Login {
+			// user is not admin or trying to deactivate another`s profile
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("User wasn`t deactivated"))
+			return
+		}
+	}
+
+	//check if login from request body exists in DB
+	exists, err := h.userRepo.CheckIfLoginExists(ctx, parameters.Login)
+	if err != nil {
+		log.WithError(err).Info("DB request of login returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !exists {
+		log.Debug("Login does not exist in DB")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Invalid login - doesn`t exist in DB"))
+		return
+	}
+
+	//check if user is deactivated already
+	active, err := h.userRepo.CheckIfUserActive(ctx, parameters.Login)
+	if err != nil {
+		log.WithError(err).Info("DB request of active attribute returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !active {
+		log.Debug("User is deactivated already")
+		w.WriteHeader(http.StatusNotAcceptable)
+		w.Write([]byte("User is deactivated already"))
+		return
+	}
+
+	//deactivation request
+	err = h.userRepo.DeactivateUser(ctx, parameters.Login)
+	if err != nil {
+		log.WithError(err).Info("DB user deactivation request returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("User deactivated successfully"))
 }
