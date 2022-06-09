@@ -43,11 +43,11 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&parameters)
 	if err != nil {
 		if err == io.EOF {
-			log.WithError(err).Info("Empty request body")
+			log.WithError(err).Info("empty request body")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		log.WithError(err).Info("Error decoding json request occurred")
+		log.WithError(err).Info("error decoding request body occurred")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -70,23 +70,23 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists {
-		log.Info("Login exists already")
+		log.Info("login exists already")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Please choose another login"))
 		return
 	}
 
-	log.Debug("Login not found in DB, registration is allowed to proceed with provided login")
+	log.Debug("login not found in DB, registration is allowed to proceed with provided login")
 
 	//an attempt to add new user
 	err = h.userRepo.AddNewUser(ctx, parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
 	if err != nil {
-		log.WithError(err).Info("Error occurred when adding user to DB")
+		log.WithError(err).Info("error occurred when adding user to DB")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	log.Debug("User added succesfully")
+	log.Debug("user added succesfully")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("User registered successfully"))
 }
@@ -97,8 +97,7 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	UserID int    `json:"user_id"`
-	Token  string `json:"token"`
+	Token string `json:"token"`
 }
 
 type claims struct {
@@ -115,11 +114,11 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	err := json.NewDecoder(r.Body).Decode(&parameters)
 	if err != nil {
 		if err == io.EOF {
-			log.WithError(err).Info("Empty request body")
+			log.WithError(err).Info("empty request body")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		log.WithError(err).Info("Error occurred")
+		log.WithError(err).Info("error decoding request body occurred")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -127,7 +126,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	user, err := h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.Password)
 	if err != nil {
 		if err == ErrNoRows {
-			log.WithError(err).Error("No rows found")
+			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Please check user login or password"))
 			return
@@ -139,16 +138,14 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 
 	//check if user is deactivated
 	if !user.Active {
-		log.Debug("User is deactivated")
+		log.Debug("user is deactivated")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("User is deactivated"))
 		return
 	}
 
-	response.UserID = user.ID
-
 	claims := &claims{
-		UserID: response.UserID,
+		UserID: user.ID,
 		StandardClaims: jwt.StandardClaims{
 			Issuer: "AuthService",
 		},
@@ -164,7 +161,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		log.WithError(err).Info("Error encoding struct to JSON")
+		log.WithError(err).Info("error encoding struct to JSON")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -186,11 +183,11 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 	err := json.NewDecoder(r.Body).Decode(&parameters)
 	if err != nil {
 		if err == io.EOF {
-			log.WithError(err).Info("Empty request body")
+			log.WithError(err).Info("empty request body")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		log.WithError(err).Info("Error occurred")
+		log.WithError(err).Info("error decoding request body occurred")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -205,13 +202,11 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if !deactivator.Admin {
-		if deactivator.Login != parameters.Login {
-			// user is not admin or trying to deactivate another`s profile
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("User wasn`t deactivated"))
-			return
-		}
+	if !deactivator.Admin && (deactivator.Login != parameters.Login) {
+		// user is not admin or trying to deactivate another`s profile
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("User wasn`t deactivated"))
+		return
 	}
 
 	//deactivation request
@@ -224,7 +219,7 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !exists {
-		log.Info("Login does not exist in the system")
+		log.Info("login does not exist in the system")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Please choose another login"))
 		return
