@@ -16,6 +16,7 @@ import (
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
+	mid "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
 )
 
@@ -90,9 +91,8 @@ func service() http.Handler {
 		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
 			UsersProvider.UserLogin(w, r, cfgJWT.SecretKey)
 		})
-		r.Post("/deactivate", func(w http.ResponseWriter, r *http.Request) {
-			UsersProvider.UserDeactivation(w, r, cfgJWT.SecretKey)
-		})
+		r.Post("/deactivate", mid.Authorize(cfgJWT.SecretKey, UsersProvider.UserDeactivation))
+
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r

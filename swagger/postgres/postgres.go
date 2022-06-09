@@ -36,7 +36,10 @@ func (db *DB) Open() error {
 
 func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*models.User, error) {
 	var user *models.User = &models.User{}
-	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 AND password=$2", login, password).Scan(&user.UserID)
+	stmnt := `SELECT u.user_id, a.active FROM users u 
+				JOIN access a ON a.user_id=u.user_id 
+				WHERE u.login=$1 AND u.password=$2`
+	err := db.pool.QueryRow(ctx, stmnt, login, password).Scan(&user.ID, &user.Active)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -47,13 +50,12 @@ func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*m
 		return nil, err
 	}
 
-	log.WithFields(log.Fields{"user_id": user.UserID}).Debug("User found in DB")
 	return user, nil
 }
 
 func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error) {
 	var user *models.User = &models.User{}
-	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 ", login).Scan(&user.UserID)
+	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 ", login).Scan(&user.ID)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -63,60 +65,57 @@ func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return false, err
 	}
-	log.Debug("Provided login found in DB")
+
 	return true, nil
 }
 
 func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error {
-	stmnt := "INSERT INTO users (login, password, first_name, last_name, email, social_media_links) VALUES ($1, $2, $3, $4, $5, $6)"
+	stmnt := `WITH step_one AS (
+				INSERT INTO users (login, password, first_name, last_name, email, social_media_links) 
+				VALUES ($1, $2, $3, $4, $5, $6)
+		 		RETURNING user_id
+	   			) INSERT INTO access (user_id) SELECT user_id FROM step_one`
+
 	_, err := db.pool.Exec(ctx, stmnt, login, password, firstName, lastName, email, socialMediaLinks)
 	if err != nil {
 		log.WithError(err).Error("err executing the DB request to add new user")
 		return err
 	}
 
-	log.Debug("Successfully added user to DB")
 	return nil
 }
 
 func (db *DB) GetAdminAttrUserLogin(ctx context.Context, userID int) (*models.User, error) {
 	var user *models.User = &models.User{}
-	stmnt := "SELECT administrator, login FROM users WHERE user_id=$1"
+	stmnt := `SELECT a.administrator, u.login FROM users u 
+				JOIN access a ON a.user_id=u.user_id
+				WHERE a.user_id=$1`
 
-	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Admin, &user.UserLogin)
+	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Admin, &user.Login)
 	if err != nil {
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
 	}
 
-	log.Debug("Successfully obtained the data from DB")
 	return user, nil
 }
 
-func (db *DB) DeactivateUser(ctx context.Context, userLogin string) error {
-	stmnt := "UPDATE users SET active=false WHERE login=$1"
-	_, err := db.pool.Exec(ctx, stmnt, userLogin)
-	if err != nil {
-		log.WithError(err).Error("err executing the DB request to deactivate the user")
-		return err
-	}
-
-	log.Debug("Successfully deactivated the user")
-	return nil
-}
-
-func (db *DB) CheckIfUserActive(ctx context.Context, login string) (bool, error) {
+func (db *DB) DeactivateUser(ctx context.Context, userLogin string) (bool, error) {
 	var user *models.User = &models.User{}
-	err := db.pool.QueryRow(ctx, "SELECT active FROM users WHERE login=$1 ", login).Scan(&user.Active)
+	stmnt := `UPDATE access 
+				SET active=false 
+				WHERE user_id = (SELECT user_id from users where login =$1)
+				RETURNING user_id, active`
+	err := db.pool.QueryRow(ctx, stmnt, userLogin).Scan(&user.ID, &user.Active)
 
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("User not found", err).Debug("Valid error when login is not found")
+			return false, nil
+		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return false, err
 	}
-	log.Debug("Successfully obtained the data from DB")
 
-	if user.Active {
-		return true, nil
-	}
-	return false, nil
+	return true, nil
 }
