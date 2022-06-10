@@ -86,7 +86,7 @@ paths:
         "401":
           $ref: '#/components/responses/UnauthorizedErr'
         "403":
-          description: Invalid login or password
+          description: Invalid login or password or user deactivated
         "429":
           description: Attempts limit is reached
         "500":
@@ -129,6 +129,8 @@ paths:
           description: User has no rights to perform operation
         "404":
           description: Invalid login - doesn`t exist in DB
+        "406":
+          description: User is deactivated already
         "500":
           description: Internal server error
 
