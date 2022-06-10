@@ -207,7 +207,7 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if deactivator.Role != "1" && (deactivator.Login != parameters.Login) {
+	if !deactivator.IsAdmin() && (deactivator.Login != parameters.Login) {
 		// user is not admin or trying to deactivate another`s profile
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("User wasn`t deactivated"))

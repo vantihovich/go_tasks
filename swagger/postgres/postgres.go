@@ -84,7 +84,7 @@ func (db *DB) GetAdminAttrUserLogin(ctx context.Context, userID int) (*models.Us
 	var user *models.User = &models.User{}
 	stmnt := `SELECT role_id, login FROM users WHERE user_id=$1`
 
-	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Role, &user.Login)
+	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.RoleID, &user.Login)
 	if err != nil {
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
