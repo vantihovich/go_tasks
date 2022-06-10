@@ -36,11 +36,9 @@ func (db *DB) Open() error {
 
 func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*models.User, error) {
 	var user *models.User = &models.User{}
-	stmnt := `SELECT u.user_id, a.active FROM users u 
-				JOIN access a ON a.user_id=u.user_id 
-				WHERE u.login=$1 AND u.password=$2`
-	err := db.pool.QueryRow(ctx, stmnt, login, password).Scan(&user.ID, &user.Active)
+	stmnt := `SELECT user_id, active FROM users WHERE login=$1 AND password=$2`
 
+	err := db.pool.QueryRow(ctx, stmnt, login, password).Scan(&user.ID, &user.Active)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithField("User not found", err).Debug("Valid error when login is not found")
@@ -70,11 +68,8 @@ func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error
 }
 
 func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error {
-	stmnt := `WITH step_one AS (
-				INSERT INTO users (login, password, first_name, last_name, email, social_media_links) 
-				VALUES ($1, $2, $3, $4, $5, $6)
-		 		RETURNING user_id
-	   			) INSERT INTO access (user_id) SELECT user_id FROM step_one`
+	stmnt := `INSERT INTO users (login, password, first_name, last_name, email, social_media_links) 
+				VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err := db.pool.Exec(ctx, stmnt, login, password, firstName, lastName, email, socialMediaLinks)
 	if err != nil {
@@ -87,11 +82,9 @@ func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastNa
 
 func (db *DB) GetAdminAttrUserLogin(ctx context.Context, userID int) (*models.User, error) {
 	var user *models.User = &models.User{}
-	stmnt := `SELECT a.administrator, u.login FROM users u 
-				JOIN access a ON a.user_id=u.user_id
-				WHERE a.user_id=$1`
+	stmnt := `SELECT role_id, login FROM users WHERE user_id=$1`
 
-	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Admin, &user.Login)
+	err := db.pool.QueryRow(ctx, stmnt, userID).Scan(&user.Role, &user.Login)
 	if err != nil {
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
@@ -102,12 +95,9 @@ func (db *DB) GetAdminAttrUserLogin(ctx context.Context, userID int) (*models.Us
 
 func (db *DB) DeactivateUser(ctx context.Context, userLogin string) (bool, error) {
 	var user *models.User = &models.User{}
-	stmnt := `UPDATE access 
-				SET active=false 
-				WHERE user_id = (SELECT user_id from users where login =$1)
-				RETURNING user_id, active`
-	err := db.pool.QueryRow(ctx, stmnt, userLogin).Scan(&user.ID, &user.Active)
+	stmnt := `UPDATE users SET active=false WHERE login =$1 RETURNING user_id, active`
 
+	err := db.pool.QueryRow(ctx, stmnt, userLogin).Scan(&user.ID, &user.Active)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithField("User not found", err).Debug("Valid error when login is not found")

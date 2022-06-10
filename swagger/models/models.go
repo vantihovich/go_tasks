@@ -5,7 +5,7 @@ import "context"
 type User struct {
 	ID     int
 	Login  string
-	Admin  bool
+	Role   string
 	Active bool
 }
 

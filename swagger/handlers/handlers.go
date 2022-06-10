@@ -192,17 +192,22 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	deactivatorID := (r.Context().Value(ContextKeyUserID)).(int)
+	deactivatorID := (r.Context().Value(ContextKeyUserID))
+	if deactivatorID == nil {
+		log.Error("empty authorization context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	//check if logged in user is allowed to deactivate the user from the request
-	deactivator, err := h.userRepo.GetAdminAttrUserLogin(ctx, deactivatorID)
+	deactivator, err := h.userRepo.GetAdminAttrUserLogin(ctx, deactivatorID.(int))
 	if err != nil {
 		log.WithError(err).Info("DB request returned error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if !deactivator.Admin && (deactivator.Login != parameters.Login) {
+	if deactivator.Role != "1" && (deactivator.Login != parameters.Login) {
 		// user is not admin or trying to deactivate another`s profile
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("User wasn`t deactivated"))
