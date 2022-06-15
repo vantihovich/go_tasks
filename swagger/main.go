@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/helper"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
 )
@@ -72,6 +74,23 @@ func service() http.Handler {
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load JWT config")
 	}
+
+	cfgLogin, err := cnfg.LoadLogin()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load Login config")
+	}
+
+	AttemptsLimit, err := strconv.Atoi(cfgLogin.AttemptsAmount)
+	if err != nil {
+		log.WithError(err).Fatal("failed to convert login attempts limit parameter")
+	}
+	ExpirationTime, err := strconv.Atoi(cfgLogin.BanExpireTime)
+	if err != nil {
+		log.WithError(err).Fatal("failed to convert login ban expiration parameter")
+	}
+
+	//initialize env parameters for helper (Login cache)
+	helper.GetEnvVariables(AttemptsLimit, ExpirationTime)
 
 	log.Info("Connecting to DB")
 	db := postgr.New(cfgDB)

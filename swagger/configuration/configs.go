@@ -20,6 +20,11 @@ type JWTSecret struct {
 	SecretKey string `env:"JWTSECRETKEY,required"`
 }
 
+type LoginLimitParameters struct {
+	BanExpireTime  string `env:"LOGINBANEXPIRE,required"`
+	AttemptsAmount string `env:"LOGINATTEMPTSAMOUNT,required"`
+}
+
 func LoadDB() (App, error) {
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
@@ -32,6 +37,14 @@ func LoadJWT() (JWTSecret, error) {
 	cfg := JWTSecret{}
 	if err := env.Parse(&cfg); err != nil {
 		return JWTSecret{}, err
+	}
+	return cfg, nil
+}
+
+func LoadLogin() (LoginLimitParameters, error) {
+	cfg := LoginLimitParameters{}
+	if err := env.Parse(&cfg); err != nil {
+		return LoginLimitParameters{}, err
 	}
 	return cfg, nil
 }

@@ -3,12 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/vantihovich/go_tasks/tree/master/swagger/helper"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
@@ -126,6 +128,33 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	user, err := h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.Password)
 	if err != nil {
 		if err == ErrNoRows {
+			//caching unsuccessfull attempts, counting them , setting attempts limit expiration time
+			counter := helper.LoginCounter{
+				Number: 1,
+			}
+
+			cache, exists := helper.GetCache(parameters.Login)
+			if exists {
+				//cache exists so checking if the limit is reached
+				if cache.LimitReached() {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("you`ve reached the login attempts limit, please try again after an hour"))
+					return
+				}
+
+				//cache exists, limit not reached so increment attempts counter
+				counter.Number = cache.Number + 1
+				helper.SetCache(parameters.Login, counter)
+
+				attemptsLeft := helper.CacheEnv.AttemptsLimit - counter.Number
+				log.WithError(err).Error("no rows found")
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, "Please check user login or password, login attempts left : %d", attemptsLeft)
+				return
+			}
+
+			helper.SetCache(parameters.Login, counter)
+
 			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Please check user login or password"))
