@@ -233,3 +233,85 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("User deactivated successfully"))
 }
+
+type resetPWDRequest struct {
+	Login         string `json:"login"`
+	OldPWD        string `json:"old_password"`
+	NewPWD        string `json:"new_password"`
+	ConfirmNewPWD string `json:"confirm_new_password"`
+}
+
+func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := resetPWDRequest{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pwdChangerID := (r.Context().Value(ContextKeyUserID))
+	if pwdChangerID == nil {
+		log.Error("empty authorization context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//check if logged in user is allowed to change the password for the user from the request
+	pwdChanger, err := h.userRepo.GetAdminAttrUserLogin(ctx, pwdChangerID.(int))
+	if err != nil {
+		log.WithError(err).Info("DB request returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if pwdChanger.Login != parameters.Login {
+		// user is trying to change another`s password
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Password was not changed"))
+		return
+	}
+
+	//confirming old password
+	_, err = h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.OldPWD)
+	if err != nil {
+		if err == ErrNoRows {
+			log.WithError(err).Error("no rows found")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Please check user login or old password"))
+			return
+		}
+		log.WithError(err).Info("DB request returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//validating new password
+	valid := validators.ValidateChangingPWD(parameters.NewPWD, parameters.ConfirmNewPWD)
+	if !valid {
+		log.Error("new password or new confirmed password are empty or not equal")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Password was not changed: new password or new confirmed password are empty or not equal"))
+		return
+	}
+
+	//PWD change request
+	err = h.userRepo.ChangePWD(ctx, parameters.Login, parameters.NewPWD)
+	if err != nil {
+		log.WithError(err).Info("error occurred when resetting user's password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug("password changed succesfully")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("Password is changed"))
+}

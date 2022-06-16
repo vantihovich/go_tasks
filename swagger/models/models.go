@@ -15,6 +15,7 @@ type UserRepository interface {
 	AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error
 	GetAdminAttrUserLogin(ctx context.Context, userID int) (*User, error)
 	DeactivateUser(ctx context.Context, userLogin string) (bool, error)
+	ChangePWD(ctx context.Context, userLogin, newPassword string) error
 }
 
 var roleAdmin = "1"

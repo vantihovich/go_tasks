@@ -6,3 +6,10 @@ func ValidateRegistrationRequest(login, password, firstName, lastName, email str
 	}
 	return true
 }
+
+func ValidateChangingPWD(newPWD, newPWDConfirm string) bool {
+	if newPWD != newPWDConfirm || newPWD == "" || newPWDConfirm == "" {
+		return false
+	}
+	return true
+}
