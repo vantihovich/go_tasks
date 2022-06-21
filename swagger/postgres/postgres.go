@@ -110,7 +110,7 @@ func (db *DB) DeactivateUser(ctx context.Context, userLogin string) (bool, error
 	return true, nil
 }
 
-func (db *DB) ChangePWD(ctx context.Context, userLogin, newPassword string) error {
+func (db *DB) ChangePassword(ctx context.Context, userLogin, newPassword string) error {
 	stmnt := `UPDATE users SET password=$1 WHERE login =$2`
 	_, err := db.pool.Exec(ctx, stmnt, newPassword, userLogin)
 	if err != nil {

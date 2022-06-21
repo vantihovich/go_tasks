@@ -7,8 +7,8 @@ func ValidateRegistrationRequest(login, password, firstName, lastName, email str
 	return true
 }
 
-func ValidateChangingPWD(newPWD, newPWDConfirm string) bool {
-	if newPWD != newPWDConfirm || newPWD == "" || newPWDConfirm == "" {
+func ValidateChangingPWD(newPassword, passwordConfirm string) bool {
+	if newPassword == "" || newPassword != passwordConfirm {
 		return false
 	}
 	return true

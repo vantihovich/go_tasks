@@ -235,10 +235,9 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 }
 
 type resetPWDRequest struct {
-	Login         string `json:"login"`
-	OldPWD        string `json:"old_password"`
-	NewPWD        string `json:"new_password"`
-	ConfirmNewPWD string `json:"confirm_new_password"`
+	OldPassword        string `json:"old_password"`
+	NewPassword        string `json:"new_password"`
+	ConfirmNewPassword string `json:"confirm_new_password"`
 }
 
 func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
@@ -258,14 +257,13 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pwdChangerID := (r.Context().Value(ContextKeyUserID))
+	pwdChangerID := r.Context().Value(ContextKeyUserID)
 	if pwdChangerID == nil {
 		log.Error("empty authorization context")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	//check if logged in user is allowed to change the password for the user from the request
 	pwdChanger, err := h.userRepo.GetAdminAttrUserLogin(ctx, pwdChangerID.(int))
 	if err != nil {
 		log.WithError(err).Info("DB request returned error")
@@ -273,15 +271,8 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if pwdChanger.Login != parameters.Login {
-		// user is trying to change another`s password
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Password was not changed"))
-		return
-	}
-
 	//confirming old password
-	_, err = h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.OldPWD)
+	_, err = h.userRepo.FindByLoginAndPwd(ctx, pwdChanger.Login, parameters.OldPassword)
 	if err != nil {
 		if err == ErrNoRows {
 			log.WithError(err).Error("no rows found")
@@ -295,7 +286,7 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//validating new password
-	valid := validators.ValidateChangingPWD(parameters.NewPWD, parameters.ConfirmNewPWD)
+	valid := validators.ValidateChangingPWD(parameters.NewPassword, parameters.ConfirmNewPassword)
 	if !valid {
 		log.Error("new password or new confirmed password are empty or not equal")
 		w.WriteHeader(http.StatusBadRequest)
@@ -304,7 +295,7 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//PWD change request
-	err = h.userRepo.ChangePWD(ctx, parameters.Login, parameters.NewPWD)
+	err = h.userRepo.ChangePassword(ctx, pwdChanger.Login, parameters.NewPassword)
 	if err != nil {
 		log.WithError(err).Info("error occurred when resetting user's password")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -312,6 +303,6 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Debug("password changed succesfully")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Password is changed"))
 }
