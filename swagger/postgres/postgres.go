@@ -51,6 +51,23 @@ func (db *DB) FindByLoginAndPwd(ctx context.Context, login, password string) (*m
 	return user, nil
 }
 
+func (db *DB) FindByIDAndPwd(ctx context.Context, userID int, password string) (*models.User, error) {
+	var user *models.User = &models.User{}
+	stmnt := `SELECT user_id, active FROM users WHERE user_id=$1 AND password=$2`
+
+	err := db.pool.QueryRow(ctx, stmnt, userID, password).Scan(&user.ID, &user.Active)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("User not found", err).Debug("Valid error when login is not found")
+			return nil, handlers.ErrNoRows
+		}
+		log.WithError(err).Error("err executing or parsing the request of ID and password to DB")
+		return nil, err
+	}
+
+	return user, nil
+}
+
 func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error) {
 	var user *models.User = &models.User{}
 	err := db.pool.QueryRow(ctx, "SELECT user_id FROM users WHERE login=$1 ", login).Scan(&user.ID)
@@ -110,9 +127,9 @@ func (db *DB) DeactivateUser(ctx context.Context, userLogin string) (bool, error
 	return true, nil
 }
 
-func (db *DB) ChangePassword(ctx context.Context, userLogin, newPassword string) error {
-	stmnt := `UPDATE users SET password=$1 WHERE login =$2`
-	_, err := db.pool.Exec(ctx, stmnt, newPassword, userLogin)
+func (db *DB) ChangePassword(ctx context.Context, userID int, newPassword string) error {
+	stmnt := `UPDATE users SET password=$1 WHERE user_id=$2`
+	_, err := db.pool.Exec(ctx, stmnt, newPassword, userID)
 	if err != nil {
 		log.WithError(err).Error("err executing the DB request to reset password")
 		return err

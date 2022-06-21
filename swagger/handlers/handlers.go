@@ -234,7 +234,7 @@ func (h *UsersHandler) UserDeactivation(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte("User deactivated successfully"))
 }
 
-type resetPWDRequest struct {
+type resetPasswordRequest struct {
 	OldPassword        string `json:"old_password"`
 	NewPassword        string `json:"new_password"`
 	ConfirmNewPassword string `json:"confirm_new_password"`
@@ -242,7 +242,7 @@ type resetPWDRequest struct {
 
 func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	parameters := resetPWDRequest{}
+	parameters := resetPasswordRequest{}
 	w.Header().Set("Content-Type", "application/json")
 
 	err := json.NewDecoder(r.Body).Decode(&parameters)
@@ -264,15 +264,8 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pwdChanger, err := h.userRepo.GetAdminAttrUserLogin(ctx, pwdChangerID.(int))
-	if err != nil {
-		log.WithError(err).Info("DB request returned error")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	//confirming old password
-	_, err = h.userRepo.FindByLoginAndPwd(ctx, pwdChanger.Login, parameters.OldPassword)
+	_, err = h.userRepo.FindByIDAndPwd(ctx, pwdChangerID.(int), parameters.OldPassword)
 	if err != nil {
 		if err == ErrNoRows {
 			log.WithError(err).Error("no rows found")
@@ -286,7 +279,7 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//validating new password
-	valid := validators.ValidateChangingPWD(parameters.NewPassword, parameters.ConfirmNewPassword)
+	valid := validators.ValidateChangePasswordRequest(parameters.NewPassword, parameters.ConfirmNewPassword)
 	if !valid {
 		log.Error("new password or new confirmed password are empty or not equal")
 		w.WriteHeader(http.StatusBadRequest)
@@ -295,7 +288,7 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//PWD change request
-	err = h.userRepo.ChangePassword(ctx, pwdChanger.Login, parameters.NewPassword)
+	err = h.userRepo.ChangePassword(ctx, pwdChangerID.(int), parameters.NewPassword)
 	if err != nil {
 		log.WithError(err).Info("error occurred when resetting user's password")
 		w.WriteHeader(http.StatusInternalServerError)

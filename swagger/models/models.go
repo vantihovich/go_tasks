@@ -11,11 +11,12 @@ type User struct {
 
 type UserRepository interface {
 	FindByLoginAndPwd(ctx context.Context, login, password string) (*User, error)
+	FindByIDAndPwd(ctx context.Context, userID int, password string) (*User, error)
 	CheckIfLoginExists(ctx context.Context, login string) (bool, error)
 	AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error
 	GetAdminAttrUserLogin(ctx context.Context, userID int) (*User, error)
 	DeactivateUser(ctx context.Context, userLogin string) (bool, error)
-	ChangePassword(ctx context.Context, userLogin, newPassword string) error
+	ChangePassword(ctx context.Context, userID int, newPassword string) error
 }
 
 var roleAdmin = "1"
