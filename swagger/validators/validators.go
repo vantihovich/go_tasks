@@ -6,3 +6,10 @@ func ValidateRegistrationRequest(login, password, firstName, lastName, email str
 	}
 	return true
 }
+
+func ValidateChangePasswordRequest(newPassword, passwordConfirm string) bool {
+	if newPassword == "" || newPassword != passwordConfirm {
+		return false
+	}
+	return true
+}

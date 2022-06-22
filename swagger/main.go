@@ -111,6 +111,7 @@ func service() http.Handler {
 			UsersProvider.UserLogin(w, r, cfgJWT.SecretKey)
 		})
 		r.Post("/deactivate", mw.Authorize(cfgJWT.SecretKey, UsersProvider.UserDeactivation))
+		r.Post("/password_reset", mw.Authorize(cfgJWT.SecretKey, UsersProvider.PasswordReset))
 
 	})
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
