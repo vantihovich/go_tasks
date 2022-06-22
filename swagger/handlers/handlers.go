@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
@@ -78,8 +79,16 @@ func (h *UsersHandler) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug("login not found in DB, registration is allowed to proceed with provided login")
 
+	//hashing password
+	hash, err := bcrypt.GenerateFromPassword([]byte(parameters.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.WithError(err).Info("error occurred when hashing the password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	//an attempt to add new user
-	err = h.userRepo.AddNewUser(ctx, parameters.Login, parameters.Password, parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
+	err = h.userRepo.AddNewUser(ctx, parameters.Login, string(hash), parameters.FirstName, parameters.LastName, parameters.Email, parameters.SocialMediaLinks)
 	if err != nil {
 		log.WithError(err).Info("error occurred when adding user to DB")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -123,16 +132,24 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 		return
 	}
 
-	user, err := h.userRepo.FindByLoginAndPwd(ctx, parameters.Login, parameters.Password)
+	//trying to find user by provided login, then if user found comparing provided password with hash from DB
+	user, err := h.userRepo.FindByLogin(ctx, parameters.Login)
 	if err != nil {
 		if err == ErrNoRows {
 			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Please check user login or password"))
+			w.Write([]byte("Please check user login"))
 			return
 		}
 		log.WithError(err).Info("DB request returned error")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password)); err != nil {
+		log.WithError(err).Error("hashes don't match")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Please check user password"))
 		return
 	}
 
@@ -265,12 +282,12 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//confirming old password
-	_, err = h.userRepo.FindByIDAndPwd(ctx, pwdChangerID.(int), parameters.OldPassword)
+	user, err := h.userRepo.FindByID(ctx, pwdChangerID.(int))
 	if err != nil {
 		if err == ErrNoRows {
 			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Please check user login or old password"))
+			w.Write([]byte("Please check user login"))
 			return
 		}
 		log.WithError(err).Info("DB request returned error")
@@ -278,7 +295,14 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//validating new password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.OldPassword)); err != nil {
+		log.WithError(err).Error("hashes don't match")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Please check your password"))
+		return
+	}
+
+	//validating and hashing new password
 	valid := validators.ValidateChangePasswordRequest(parameters.NewPassword, parameters.ConfirmNewPassword)
 	if !valid {
 		log.Error("new password or new confirmed password are empty or not equal")
@@ -287,8 +311,15 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newHash, err := bcrypt.GenerateFromPassword([]byte(parameters.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.WithError(err).Info("error occurred when hashing the password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	//PWD change request
-	err = h.userRepo.ChangePassword(ctx, pwdChangerID.(int), parameters.NewPassword)
+	err = h.userRepo.ChangePassword(ctx, pwdChangerID.(int), string(newHash))
 	if err != nil {
 		log.WithError(err).Info("error occurred when resetting user's password")
 		w.WriteHeader(http.StatusInternalServerError)

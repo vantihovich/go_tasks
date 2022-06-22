@@ -3,15 +3,16 @@ package models
 import "context"
 
 type User struct {
-	ID     int
-	Login  string
-	RoleID string
-	Active bool
+	ID       int
+	Login    string
+	Password string
+	RoleID   string
+	Active   bool
 }
 
 type UserRepository interface {
-	FindByLoginAndPwd(ctx context.Context, login, password string) (*User, error)
-	FindByIDAndPwd(ctx context.Context, userID int, password string) (*User, error)
+	FindByLogin(ctx context.Context, userLogin string) (*User, error)
+	FindByID(ctx context.Context, userID int) (*User, error)
 	CheckIfLoginExists(ctx context.Context, login string) (bool, error)
 	AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error
 	GetAdminAttrUserLogin(ctx context.Context, userID int) (*User, error)
