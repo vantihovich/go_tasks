@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/caarlos0/env/v6"
 )
 
@@ -21,8 +23,13 @@ type JWTSecret struct {
 }
 
 type LoginLimitParameters struct {
-	BanExpireTime  string `env:"LOGINBANEXPIRE,required"`
-	AttemptsAmount string `env:"LOGINATTEMPTSAMOUNT,required"`
+	InvalidLoginAttemptTTL  time.Duration `env:"LOGINBANEXPIRE,required"`
+	MaxAllowedInvalidLogins string        `env:"LOGINATTEMPTSAMOUNT,required"`
+}
+
+type RedisServerParameters struct {
+	RedisServerConnectionType string `env:"REDISCONNECTIONTYPE,required"`
+	RedisServer               string `env:"REDISSERVER,required"`
 }
 
 func LoadDB() (App, error) {
@@ -45,6 +52,14 @@ func LoadLogin() (LoginLimitParameters, error) {
 	cfg := LoginLimitParameters{}
 	if err := env.Parse(&cfg); err != nil {
 		return LoginLimitParameters{}, err
+	}
+	return cfg, nil
+}
+
+func LoadRedisConfigs() (RedisServerParameters, error) {
+	cfg := RedisServerParameters{}
+	if err := env.Parse(&cfg); err != nil {
+		return RedisServerParameters{}, err
 	}
 	return cfg, nil
 }

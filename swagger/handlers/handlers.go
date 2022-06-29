@@ -6,23 +6,35 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/vantihovich/go_tasks/tree/master/swagger/helper"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
 type UsersHandler struct {
-	userRepo models.UserRepository
+	userRepo                models.UserRepository
+	cache                   Cache
+	jwtParam                string
+	InvalidLoginAttemptTTL  time.Duration
+	MaxAllowedInvalidLogins int
+}
+type Cache interface {
+	Get(string) (int, bool, error)
+	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cacheTTL time.Duration, MaxAllowedInvalidLogins int) *UsersHandler {
 	return &UsersHandler{
-		userRepo: userRepo,
+		userRepo:                userRepo,
+		cache:                   c,
+		jwtParam:                jwtParam,
+		InvalidLoginAttemptTTL:  cacheTTL,
+		MaxAllowedInvalidLogins: MaxAllowedInvalidLogins,
 	}
 }
 
@@ -116,11 +128,13 @@ type claims struct {
 	jwt.StandardClaims
 }
 
-func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtParam string) {
+func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := loginRequest{}
 	response := loginResponse{}
+	ttl := int(h.InvalidLoginAttemptTTL.Seconds())
+	infoTtl := int(h.InvalidLoginAttemptTTL.Minutes())
 
 	err := json.NewDecoder(r.Body).Decode(&parameters)
 	if err != nil {
@@ -135,50 +149,93 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	}
 
 	//trying to find user by provided login, then if user found comparing provided password with hash from DB
-	user, err := h.userRepo.FindByLogin(ctx, parameters.Login)
-	if err != nil {
-		if err == ErrNoRows {
-			//caching unsuccessfull attempts, counting them , setting attempts limit expiration time
-			counter := helper.LoginCounter{
-				Number: 1,
-			}
+	user, errLogin := h.userRepo.FindByLogin(ctx, parameters.Login)
+	if errLogin == nil {
+		invalidLogins, exists, err := h.cache.Get(parameters.Login)
+		if err != nil {
+			log.WithError(err).Info("error getting the cache from Redis")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else if exists && invalidLogins >= h.MaxAllowedInvalidLogins {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintf(w, "you`ve reached the login attempts limit, please try again after %d minutes", infoTtl)
+			return
+		}
+		errPassword := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password))
+		//caching unsuccessfull attempts of password input, counting them , setting attempts limit expiration time
+		if errPassword != nil {
+			counter := 1
+			invalidLogins, exists, err := h.cache.Get(parameters.Login)
 
-			cache, exists := helper.GetCache(parameters.Login)
-			if exists {
-				//cache exists so checking if the limit is reached
-				if cache.LimitReached() {
-					w.WriteHeader(http.StatusForbidden)
-					w.Write([]byte("you`ve reached the login attempts limit, please try again after an hour"))
+			if err != nil {
+				log.WithError(err).Info("error getting the cache from Redis")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else if exists && invalidLogins >= h.MaxAllowedInvalidLogins {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, "you`ve reached the login attempts limit, please try again after %d minutes", infoTtl)
+				return
+			} else if exists {
+				invalidLogins++
+				err = h.cache.Set(parameters.Login, invalidLogins, ttl)
+				if err != nil {
+					log.WithError(err).Info("error setting the cache to Redis")
+					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
-
-				//cache exists, limit not reached so increment attempts counter
-				counter.Number = cache.Number + 1
-				helper.SetCache(parameters.Login, counter)
-
-				attemptsLeft := helper.CacheEnv.AttemptsLimit - counter.Number
-				log.WithError(err).Error("no rows found")
 				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprintf(w, "Please check user login or password, login attempts left : %d", attemptsLeft)
+				w.Write([]byte("Please check user password"))
+				return
+			}
+			err = h.cache.Set(parameters.Login, counter, ttl)
+			if err != nil {
+				log.WithError(err).Info("error setting the cache to Redis")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Please check user password"))
+			return
+		}
+	} else {
+		if errLogin == ErrNoRows {
+			//caching unsuccessfull attempts of login input, counting them , setting attempts limit expiration time
+			counter := 1
+			invalidLogins, exists, err := h.cache.Get(parameters.Login)
+			if err != nil {
+				log.WithError(err).Info("error getting the cache from Redis")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else if exists && invalidLogins >= h.MaxAllowedInvalidLogins {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, "you`ve reached the login attempts limit, please try again after %d minutes", infoTtl)
+				return
+			} else if exists {
+				invalidLogins++
+				err = h.cache.Set(parameters.Login, invalidLogins, ttl)
+				if err != nil {
+					log.WithError(err).Info("error setting the cache to Redis")
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Please check user login"))
+				return
+			}
+			err = h.cache.Set(parameters.Login, counter, ttl)
+			if err != nil {
+				log.WithError(err).Info("error setting the cache to Redis")
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			helper.SetCache(parameters.Login, counter)
-
-			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Please check user login"))
 			return
 		}
+
 		log.WithError(err).Info("DB request returned error")
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password)); err != nil {
-		log.WithError(err).Error("hashes don't match")
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Please check user password"))
 		return
 	}
 
@@ -198,7 +255,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	}
 
 	jwToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	response.Token, err = jwToken.SignedString([]byte(jwtParam))
+	response.Token, err = jwToken.SignedString([]byte(h.jwtParam))
 	if err != nil {
 		log.WithError(err).Info("JWT creation returned error")
 		w.WriteHeader(http.StatusInternalServerError)
