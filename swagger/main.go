@@ -18,6 +18,7 @@ import (
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/redis"
 )
 
 //go:embed  api/apiauth.yaml
@@ -73,13 +74,24 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load JWT config")
 	}
 
-	log.Info("Connecting to DB")
+	cfgLogin, err := cnfg.LoadLogin()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load Login config")
+	}
+
+	log.Info("сonnecting to Redis")
+	cache, err := redis.New("tcp", "127.0.0.1:6379")
+	if err != nil {
+		log.WithError(err).Fatal("Failed to establish connection with Redis")
+	}
+
+	log.Info("сonnecting to DB")
 	db := postgr.New(cfgDB)
 	if err := db.Open(); err != nil {
 		log.WithError(err).Fatal("Failed to establish connection with DB")
 	}
 
-	UsersProvider := handlers.NewUsersHandler(&db)
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin)
 
 	r := chi.NewRouter()
 
@@ -88,9 +100,7 @@ func service() http.Handler {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", UsersProvider.RegisterNewUser)
-		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-			UsersProvider.UserLogin(w, r, cfgJWT.SecretKey)
-		})
+		r.Post("/login", UsersProvider.UserLogin)
 		r.Post("/deactivate", mw.Authorize(cfgJWT.SecretKey, UsersProvider.UserDeactivation))
 		r.Post("/password_reset", mw.Authorize(cfgJWT.SecretKey, UsersProvider.PasswordReset))
 

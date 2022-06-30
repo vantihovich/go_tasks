@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/caarlos0/env/v6"
 )
 
@@ -20,6 +22,11 @@ type JWTSecret struct {
 	SecretKey string `env:"JWTSECRETKEY,required"`
 }
 
+type LoginLimitParameters struct {
+	InvalidLoginAttemptTTL  time.Duration `env:"INVALIDLOGINATTEMPTTTL,required"`
+	MaxAllowedInvalidLogins int           `env:"MAXALLOWEDINVALIDLOGINS,required"`
+}
+
 func LoadDB() (App, error) {
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
@@ -33,5 +40,14 @@ func LoadJWT() (JWTSecret, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return JWTSecret{}, err
 	}
+	return cfg, nil
+}
+
+func LoadLogin() (LoginLimitParameters, error) {
+	cfg := LoginLimitParameters{}
+	if err := env.Parse(&cfg); err != nil {
+		return LoginLimitParameters{}, err
+	}
+
 	return cfg, nil
 }

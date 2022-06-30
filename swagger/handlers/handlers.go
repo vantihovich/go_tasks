@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -10,17 +11,28 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
+	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
 type UsersHandler struct {
 	userRepo models.UserRepository
+	cache    Cache
+	jwtParam string
+	cfgLogin cnfg.LoginLimitParameters
+}
+type Cache interface {
+	Get(string) (int, error)
+	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters) *UsersHandler {
 	return &UsersHandler{
 		userRepo: userRepo,
+		cache:    c,
+		jwtParam: jwtParam,
+		cfgLogin: cfgLogin,
 	}
 }
 
@@ -114,11 +126,13 @@ type claims struct {
 	jwt.StandardClaims
 }
 
-func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtParam string) {
+func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 	parameters := loginRequest{}
 	response := loginResponse{}
+	ttl := int(h.cfgLogin.InvalidLoginAttemptTTL.Seconds())
+	infoTtl := int(h.cfgLogin.InvalidLoginAttemptTTL.Minutes())
 
 	err := json.NewDecoder(r.Body).Decode(&parameters)
 	if err != nil {
@@ -132,11 +146,10 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 		return
 	}
 
-	//trying to find user by provided login, then if user found comparing provided password with hash from DB
+	//trying to find user by provided login
 	user, err := h.userRepo.FindByLogin(ctx, parameters.Login)
 	if err != nil {
 		if err == ErrNoRows {
-			log.WithError(err).Error("no rows found")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Please check user login"))
 			return
@@ -146,14 +159,34 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password)); err != nil {
-		log.WithError(err).Error("hashes don't match")
+	//if user found , checking if user`s profile is banned due to invalid password inputs
+	invalidLogins, err := h.cache.Get(parameters.Login)
+	if err != nil {
+		log.WithError(err).Info("error getting the cache from Redis")
+	}
+
+	if invalidLogins >= h.cfgLogin.MaxAllowedInvalidLogins {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintf(w, "you`ve reached the login attempts limit, please try again after %d minutes", infoTtl)
+		return
+	}
+
+	//if user login found and profile is not banned, comparing provided password with hash from DB
+	errPassword := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password))
+	if errPassword != nil {
+		//increasing the amount of password input attempts
+		invalidLogins++
+		err = h.cache.Set(parameters.Login, invalidLogins, ttl)
+		if err != nil {
+			log.WithError(err).Info("error setting the cache to Redis")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Please check user password"))
 		return
 	}
 
-	//check if user is deactivated
+	//provided password is correct, so checking if user is deactivated
 	if !user.Active {
 		log.Debug("user is deactivated")
 		w.WriteHeader(http.StatusForbidden)
@@ -169,7 +202,7 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request, jwtPara
 	}
 
 	jwToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	response.Token, err = jwToken.SignedString([]byte(jwtParam))
+	response.Token, err = jwToken.SignedString([]byte(h.jwtParam))
 	if err != nil {
 		log.WithError(err).Info("JWT creation returned error")
 		w.WriteHeader(http.StatusInternalServerError)
