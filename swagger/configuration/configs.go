@@ -23,13 +23,8 @@ type JWTSecret struct {
 }
 
 type LoginLimitParameters struct {
-	InvalidLoginAttemptTTL  time.Duration `env:"LOGINBANEXPIRE,required"`
-	MaxAllowedInvalidLogins string        `env:"LOGINATTEMPTSAMOUNT,required"`
-}
-
-type RedisServerParameters struct {
-	RedisServerConnectionType string `env:"REDISCONNECTIONTYPE,required"`
-	RedisServer               string `env:"REDISSERVER,required"`
+	InvalidLoginAttemptTTL  time.Duration `env:"INVALIDLOGINATTEMPTTTL,required"`
+	MaxAllowedInvalidLogins int           `env:"MAXALLOWEDINVALIDLOGINS,required"`
 }
 
 func LoadDB() (App, error) {
@@ -53,13 +48,6 @@ func LoadLogin() (LoginLimitParameters, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return LoginLimitParameters{}, err
 	}
-	return cfg, nil
-}
 
-func LoadRedisConfigs() (RedisServerParameters, error) {
-	cfg := RedisServerParameters{}
-	if err := env.Parse(&cfg); err != nil {
-		return RedisServerParameters{}, err
-	}
 	return cfg, nil
 }

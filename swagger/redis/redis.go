@@ -23,7 +23,7 @@ func New(connType string, address string) (Redis, error) {
 	}, nil
 }
 
-func (r Redis) Get(login string) (int, bool, error) {
+func (r Redis) Get(login string) (cachedAttempts int, exists bool, err error) {
 	cached, err := redis.Int(r.conn.Do("Get", login))
 	if err != nil {
 		if err == redis.ErrNil {

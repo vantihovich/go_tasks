@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -80,18 +79,8 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load Login config")
 	}
 
-	cfgRedis, err := cnfg.LoadRedisConfigs()
-	if err != nil {
-		log.WithError(err).Fatal("Failed to load Redis config")
-	}
-
-	maxAllowedInvalidLogins, err := strconv.Atoi(cfgLogin.MaxAllowedInvalidLogins)
-	if err != nil {
-		log.WithError(err).Fatal("Failed to convert env parameter to int type")
-	}
-
 	log.Info("Connecting to Redis")
-	cache, err := redis.New(cfgRedis.RedisServerConnectionType, cfgRedis.RedisServer)
+	cache, err := redis.New("tcp", "127.0.0.1:6379")
 	if err != nil {
 		log.WithError(err).Fatal("Failed to establish connection with Redis")
 	}
@@ -102,7 +91,7 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to establish connection with DB")
 	}
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin.InvalidLoginAttemptTTL, maxAllowedInvalidLogins)
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin)
 
 	r := chi.NewRouter()
 
