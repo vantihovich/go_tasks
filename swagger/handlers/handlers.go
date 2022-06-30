@@ -163,7 +163,6 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	invalidLogins, err := h.cache.Get(parameters.Login)
 	if err != nil {
 		log.WithError(err).Info("error getting the cache from Redis")
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	if invalidLogins >= h.cfgLogin.MaxAllowedInvalidLogins {
