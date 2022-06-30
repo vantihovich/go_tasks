@@ -23,16 +23,16 @@ func New(connType string, address string) (Redis, error) {
 	}, nil
 }
 
-func (r Redis) Get(login string) (cachedAttempts int, exists bool, err error) {
+func (r Redis) Get(login string) (cachedAttempts int, err error) {
 	cached, err := redis.Int(r.conn.Do("Get", login))
 	if err != nil {
 		if err == redis.ErrNil {
-			return 0, false, nil
+			return 0, nil
 		}
 		log.WithError(err).Error("Unable to get cached data")
-		return 0, false, err
+		return 0, err
 	}
-	return cached, true, nil
+	return cached, nil
 }
 
 func (r Redis) Set(login string, attempts int, ttl int) (err error) {

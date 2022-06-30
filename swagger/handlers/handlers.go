@@ -23,7 +23,7 @@ type UsersHandler struct {
 	cfgLogin cnfg.LoginLimitParameters
 }
 type Cache interface {
-	Get(string) (int, bool, error)
+	Get(string) (int, error)
 	Set(string, int, int) error
 }
 
@@ -160,14 +160,13 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//if user found , checking if user`s profile is banned due to invalid password inputs
-	invalidLogins, exists, err := h.cache.Get(parameters.Login)
+	invalidLogins, err := h.cache.Get(parameters.Login)
 	if err != nil {
 		log.WithError(err).Info("error getting the cache from Redis")
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
-	if exists && invalidLogins >= h.cfgLogin.MaxAllowedInvalidLogins {
+	if invalidLogins >= h.cfgLogin.MaxAllowedInvalidLogins {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprintf(w, "you`ve reached the login attempts limit, please try again after %d minutes", infoTtl)
 		return
@@ -176,27 +175,12 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	//if user login found and profile is not banned, comparing provided password with hash from DB
 	errPassword := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(parameters.Password))
 	if errPassword != nil {
-		//checking the amount of password input attempts and increasing it
-		if exists {
-			invalidLogins++
-			err = h.cache.Set(parameters.Login, invalidLogins, ttl)
-			if err != nil {
-				log.WithError(err).Info("error setting the cache to Redis")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Please check user password"))
-			return
-		}
-
-		//there are no previously created cache entries , so creating new one as provided passowrd is incorrect
-		counter := 1
-		err = h.cache.Set(parameters.Login, counter, ttl)
+		//increasing the amount of password input attempts
+		invalidLogins++
+		err = h.cache.Set(parameters.Login, invalidLogins, ttl)
 		if err != nil {
 			log.WithError(err).Info("error setting the cache to Redis")
 			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Please check user password"))

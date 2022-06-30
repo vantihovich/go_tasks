@@ -79,13 +79,13 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load Login config")
 	}
 
-	log.Info("Connecting to Redis")
+	log.Info("сonnecting to Redis")
 	cache, err := redis.New("tcp", "127.0.0.1:6379")
 	if err != nil {
 		log.WithError(err).Fatal("Failed to establish connection with Redis")
 	}
 
-	log.Info("Connecting to DB")
+	log.Info("сonnecting to DB")
 	db := postgr.New(cfgDB)
 	if err := db.Open(); err != nil {
 		log.WithError(err).Fatal("Failed to establish connection with DB")
