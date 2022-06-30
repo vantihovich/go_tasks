@@ -136,3 +136,18 @@ func (db *DB) ChangePassword(ctx context.Context, userID int, newPassword string
 	}
 	return nil
 }
+
+func (db *DB) WriteSecret(ctx context.Context, email, secret string) (bool, error) {
+	var user *models.User = &models.User{}
+	stmnt := `UPDATE users SET recovery=$1 WHERE email =$2 RETURNING user_id`
+	err := db.pool.QueryRow(ctx, stmnt, secret, email).Scan(&user.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("User with specified email not found", err).Debug("Valid error when email is not found")
+			return false, nil
+		}
+		log.WithError(err).Error("err executing or parsing the request to DB")
+		return false, err
+	}
+	return true, nil
+}

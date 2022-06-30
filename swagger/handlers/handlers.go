@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
@@ -362,4 +364,55 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	log.Debug("password changed succesfully")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Password is changed"))
+}
+
+type forgotPasswordRequest struct {
+	email string `json:"email"`
+}
+
+func (h UsersHandler) ForgotPWDInit(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := forgotPasswordRequest{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//generate random secret phraze to store in DB for recovering Password
+	//TODO move randomizer logic to another package
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.Seed(time.Now().UnixNano())
+
+	random := make([]byte, 10)
+	for i := range random {
+		random[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+
+	secret := string(random)
+
+	//write the phraze to DB
+	exists, err := h.userRepo.WriteSecret(ctx, parameters.email, secret)
+	if err != nil {
+		log.WithError(err).Info("DB request of login returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		log.Info("email does not exist in the system")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Please specify the correct email address"))
+		return
+	}
+	//send email to provided address
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("The email with secret key has been sent"))
 }
