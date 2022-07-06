@@ -14,27 +14,31 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
 type UsersHandler struct {
-	userRepo models.UserRepository
-	cache    Cache
-	jwtParam string
-	cfgLogin cnfg.LoginLimitParameters
+	userRepo   models.UserRepository
+	cache      Cache
+	jwtParam   string
+	cfgLogin   cnfg.LoginLimitParameters
+	mailClient email.MailClient
 }
+
 type Cache interface {
 	Get(string) (int, error)
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.MailClient) *UsersHandler {
 	return &UsersHandler{
-		userRepo: userRepo,
-		cache:    c,
-		jwtParam: jwtParam,
-		cfgLogin: cfgLogin,
+		userRepo:   userRepo,
+		cache:      c,
+		jwtParam:   jwtParam,
+		cfgLogin:   cfgLogin,
+		mailClient: mailCli,
 	}
 }
 
@@ -367,10 +371,10 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 }
 
 type forgotPasswordRequest struct {
-	email string `json:"email"`
+	Email string `json:"email"`
 }
 
-func (h UsersHandler) ForgotPWDInit(w http.ResponseWriter, r *http.Request) {
+func (h UsersHandler) ForgotPWDSendEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordRequest{}
 	w.Header().Set("Content-Type", "application/json")
@@ -386,8 +390,7 @@ func (h UsersHandler) ForgotPWDInit(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	//generate random secret phraze to store in DB for recovering Password
-	//TODO move randomizer logic to another package
+	//generate random secret to store in DB for recovering Password
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	rand.Seed(time.Now().UnixNano())
 
@@ -398,8 +401,8 @@ func (h UsersHandler) ForgotPWDInit(w http.ResponseWriter, r *http.Request) {
 
 	secret := string(random)
 
-	//write the phraze to DB
-	exists, err := h.userRepo.WriteSecret(ctx, parameters.email, secret)
+	//write the secret to DB
+	exists, err := h.userRepo.WriteSecret(ctx, parameters.Email, secret)
 	if err != nil {
 		log.WithError(err).Info("DB request of login returned error")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -411,8 +414,15 @@ func (h UsersHandler) ForgotPWDInit(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Please specify the correct email address"))
 		return
 	}
-	//send email to provided address
+	//send email to provided email address
+	err = h.mailClient.SendEmail(parameters.Email, secret)
+	if err != nil {
+		log.WithError(err).Info("An attempt to send email to user`s email returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
+	// end sending email
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("The email with secret key has been sent"))
 }

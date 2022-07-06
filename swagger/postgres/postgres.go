@@ -146,7 +146,7 @@ func (db *DB) WriteSecret(ctx context.Context, email, secret string) (bool, erro
 			log.WithField("User with specified email not found", err).Debug("Valid error when email is not found")
 			return false, nil
 		}
-		log.WithError(err).Error("err executing or parsing the request to DB")
+		log.WithError(err).Error("err executing the request to DB to write the secret for password recovery")
 		return false, err
 	}
 	return true, nil

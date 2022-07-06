@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
@@ -79,6 +80,11 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load Login config")
 	}
 
+	cfgMailJet, err := cnfg.LoadMailJetParameters()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load MailJet configs")
+	}
+
 	log.Info("сonnecting to Redis")
 	cache, err := redis.New("tcp", "127.0.0.1:6379")
 	if err != nil {
@@ -91,7 +97,10 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to establish connection with DB")
 	}
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin)
+	log.Info("connecting to mailing service")
+	mailClient := email.New(cfgMailJet)
+
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
 
 	r := chi.NewRouter()
 
@@ -103,8 +112,8 @@ func service() http.Handler {
 		r.Post("/login", UsersProvider.UserLogin)
 		r.Post("/deactivate", mw.Authorize(cfgJWT.SecretKey, UsersProvider.UserDeactivation))
 		r.Post("/password_reset", mw.Authorize(cfgJWT.SecretKey, UsersProvider.PasswordReset))
+		r.Post("/forgot_password", UsersProvider.ForgotPWDSendEmail)
 
-		r.Post("/forgot_password", UsersProvider.ForgotPWDInit)
 		// r.Post("forgot_password_check_secret", UsersProvider.)
 		// r.Post("forgot_password_reset_password", UsersProvider.)
 
