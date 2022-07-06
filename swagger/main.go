@@ -112,7 +112,7 @@ func service() http.Handler {
 		r.Post("/login", UsersProvider.UserLogin)
 		r.Post("/deactivate", mw.Authorize(cfgJWT.SecretKey, UsersProvider.UserDeactivation))
 		r.Post("/password_reset", mw.Authorize(cfgJWT.SecretKey, UsersProvider.PasswordReset))
-		r.Post("/forgot_password", UsersProvider.ForgotPWDSendEmail)
+		r.Post("/forgot_password", UsersProvider.ForgotPasswordSendEmail)
 
 		// r.Post("forgot_password_check_secret", UsersProvider.)
 		// r.Post("forgot_password_reset_password", UsersProvider.)

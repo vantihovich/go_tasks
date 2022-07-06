@@ -374,7 +374,7 @@ type forgotPasswordRequest struct {
 	Email string `json:"email"`
 }
 
-func (h UsersHandler) ForgotPWDSendEmail(w http.ResponseWriter, r *http.Request) {
+func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordRequest{}
 	w.Header().Set("Content-Type", "application/json")
