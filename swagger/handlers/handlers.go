@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
@@ -16,6 +14,7 @@ import (
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
+	secretKey "github.com/vantihovich/go_tasks/tree/master/swagger/secretKey"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
@@ -24,7 +23,7 @@ type UsersHandler struct {
 	cache      Cache
 	jwtParam   string
 	cfgLogin   cnfg.LoginLimitParameters
-	mailClient email.MailClient
+	mailClient email.Client
 }
 
 type Cache interface {
@@ -32,7 +31,7 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.MailClient) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
 	return &UsersHandler{
 		userRepo:   userRepo,
 		cache:      c,
@@ -391,20 +390,12 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 		return
 	}
 	//generate random secret to store in DB for recovering Password
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rand.Seed(time.Now().UnixNano())
-
-	random := make([]byte, 10)
-	for i := range random {
-		random[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-
-	secret := string(random)
+	secret := secretKey.NewRandomString(10)
 
 	//write the secret to DB
-	exists, err := h.userRepo.WriteSecret(ctx, parameters.Email, secret)
+	exists, err := h.userRepo.WriteSecretToDBForPasswordRecovery(ctx, parameters.Email, secret)
 	if err != nil {
-		log.WithError(err).Info("DB request of login returned error")
+		log.WithError(err).Info("DB request of writing secret returned error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -414,7 +405,7 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 		w.Write([]byte("Please specify the correct email address"))
 		return
 	}
-	//send email to provided email address
+	//send email to provided address
 	err = h.mailClient.SendEmail(parameters.Email, secret)
 	if err != nil {
 		log.WithError(err).Info("An attempt to send email to user`s email returned error")
@@ -422,7 +413,6 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// end sending email
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("The email with secret key has been sent"))
 }
