@@ -12,27 +12,32 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
+	secretKey "github.com/vantihovich/go_tasks/tree/master/swagger/secretKey"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
 )
 
 type UsersHandler struct {
-	userRepo models.UserRepository
-	cache    Cache
-	jwtParam string
-	cfgLogin cnfg.LoginLimitParameters
+	userRepo   models.UserRepository
+	cache      Cache
+	jwtParam   string
+	cfgLogin   cnfg.LoginLimitParameters
+	mailClient email.Client
 }
+
 type Cache interface {
 	Get(string) (int, error)
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
 	return &UsersHandler{
-		userRepo: userRepo,
-		cache:    c,
-		jwtParam: jwtParam,
-		cfgLogin: cfgLogin,
+		userRepo:   userRepo,
+		cache:      c,
+		jwtParam:   jwtParam,
+		cfgLogin:   cfgLogin,
+		mailClient: mailCli,
 	}
 }
 
@@ -362,4 +367,52 @@ func (h *UsersHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	log.Debug("password changed succesfully")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Password is changed"))
+}
+
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := forgotPasswordRequest{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//generate random secret to store in DB for recovering Password
+	secret := secretKey.NewRandomString(10)
+
+	//write the secret to DB
+	exists, err := h.userRepo.WriteSecretToDBForPasswordRecovery(ctx, parameters.Email, secret)
+	if err != nil {
+		log.WithError(err).Info("DB request of writing secret returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		log.Info("email does not exist in the system")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Please specify the correct email address"))
+		return
+	}
+	//send email to provided address
+	err = h.mailClient.SendForgottenPasswordEmail(parameters.Email, secret)
+	if err != nil {
+		log.WithError(err).Info("An attempt to send email to user`s email returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("The email with secret key has been sent"))
 }

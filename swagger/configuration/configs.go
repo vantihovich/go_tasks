@@ -27,6 +27,12 @@ type LoginLimitParameters struct {
 	MaxAllowedInvalidLogins int           `env:"MAXALLOWEDINVALIDLOGINS,required"`
 }
 
+type MailJetParameters struct {
+	User        string `env:"MAILJETUSER,required"`
+	Password    string `env:"MAILJETPASSWORD,required"`
+	SenderEmail string `env:"MAILJETSENDEREMAIL,required"`
+}
+
 func LoadDB() (App, error) {
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
@@ -47,6 +53,15 @@ func LoadLogin() (LoginLimitParameters, error) {
 	cfg := LoginLimitParameters{}
 	if err := env.Parse(&cfg); err != nil {
 		return LoginLimitParameters{}, err
+	}
+
+	return cfg, nil
+}
+
+func LoadMailJetParameters() (MailJetParameters, error) {
+	cfg := MailJetParameters{}
+	if err := env.Parse(&cfg); err != nil {
+		return MailJetParameters{}, err
 	}
 
 	return cfg, nil
