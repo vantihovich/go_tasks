@@ -20,7 +20,7 @@ func New(cfg cnfg.MailJetParameters) Client {
 	}
 }
 
-func (m Client) SendEmail(recipient, secret string) error {
+func (m Client) SendForgottenPasswordEmail(recipient, secret string) error {
 	var messagesInfo = []mailjet.InfoMessagesV31{
 		mailjet.InfoMessagesV31{
 			From: &mailjet.RecipientV31{

@@ -406,7 +406,7 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 		return
 	}
 	//send email to provided address
-	err = h.mailClient.SendEmail(parameters.Email, secret)
+	err = h.mailClient.SendForgottenPasswordEmail(parameters.Email, secret)
 	if err != nil {
 		log.WithError(err).Info("An attempt to send email to user`s email returned error")
 		w.WriteHeader(http.StatusInternalServerError)
