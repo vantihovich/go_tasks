@@ -416,3 +416,109 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("The email with secret key has been sent"))
 }
+
+type forgotPasswordCheckSecretRequest struct {
+	Secret string `json:"secret"`
+}
+
+type forgotPasswordCheckSecretResponse struct {
+	UserID int `json:"userID"`
+}
+
+func (h UsersHandler) ForgotPasswordSecretCheck(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := forgotPasswordCheckSecretRequest{}
+	response := forgotPasswordCheckSecretResponse{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//check if provided secret exists in DB , if exists - set verified attribute to true
+	user, err := h.userRepo.CheckSecretSetVerifiedAttr(ctx, parameters.Secret)
+	if err != nil {
+		if err == ErrNoRows {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Please check your secret, changing password is forbidden"))
+			return
+		}
+		log.WithError(err).Info("DB request for comparing secret returned error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response.UserID = user.ID
+
+	err = json.NewEncoder(w).Encode(&response)
+	if err != nil {
+		log.WithError(err).Info("error encoding struct to JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+type forgotPasswordResetPassword struct {
+	UserID             int    `json:"user_ID"`
+	NewPassword        string `json:"new_password"`
+	ConfirmNewPassword string `json:"confirm_new_password"`
+}
+
+func (h UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := forgotPasswordResetPassword{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//validating and hashing new password
+	valid := validators.ValidateChangePasswordRequest(parameters.NewPassword, parameters.ConfirmNewPassword)
+	if !valid {
+		log.Error("new password or new confirmed password are empty or not equal")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Password was not changed: new password or new confirmed password are empty or not equal"))
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(parameters.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.WithError(err).Info("error occurred when hashing the password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	//the request to DB to update password if attribute "verified" = true, also this request clears recovery field
+	err = h.userRepo.ChangePasswordIfVerified(ctx, parameters.UserID, string(newHash))
+	if err != nil {
+		if err == ErrNoRows {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Please check user_id and if the user is verified to change password, changing password is forbidden"))
+			return
+		}
+		log.WithError(err).Info("error occurred when resetting user's password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug("password changed succesfully")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Password is changed"))
+}

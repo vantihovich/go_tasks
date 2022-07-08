@@ -151,3 +151,35 @@ func (db *DB) WriteSecretToDBForPasswordRecovery(ctx context.Context, email, sec
 	}
 	return true, nil
 }
+
+func (db *DB) CheckSecretSetVerifiedAttr(ctx context.Context, secret string) (*models.User, error) {
+	var user *models.User = &models.User{}
+	stmnt := `UPDATE users SET verified = true where recovery =$1 RETURNING user_id`
+	err := db.pool.QueryRow(ctx, stmnt, secret).Scan(&user.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("User with specified secret not found", err).Debug("Valid error when secret is not found")
+			return nil, handlers.ErrNoRows
+		}
+		log.WithError(err).Error("err executing the request to DB to write the secret for password recovery")
+		return nil, err
+	}
+	return user, nil
+}
+
+func (db *DB) ChangePasswordIfVerified(ctx context.Context, userID int, newPassword string) error {
+	var user *models.User = &models.User{}
+	//the request sets new password, clears recovery field, sets verified attribute to false for preventing future unauthorized password changes
+	stmnt := `UPDATE users SET password=$1, recovery=null, verified=false WHERE user_id=$2 and verified=true returning user_id`
+	err := db.pool.QueryRow(ctx, stmnt, newPassword, userID).Scan(&user.ID)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("User_id not found or verified attribute = false", err).Debug("Valid error when user_id not found or verified =false")
+			return handlers.ErrNoRows
+		}
+		log.WithError(err).Error("err executing the DB request to reset password")
+		return err
+	}
+	return nil
+}
