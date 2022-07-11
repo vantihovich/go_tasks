@@ -32,8 +32,12 @@ func (m Client) SendForgottenPasswordEmail(recipient, secret string) error {
 					Email: recipient,
 				},
 			},
-			Subject:  "Your secret key for changing password!",
-			TextPart: "Dear logginer, here is your key for changing the password in our services: " + secret + " .May the force be with you!",
+			TemplateLanguage: true,
+			Subject:          "Your secret key for changing password!",
+			TextPart:         "Dear logginer, here is your link for changing the password in our services.May the force be with you!",
+			HTMLPart:         "<h3>Dear logginer, here is your <a href=\"http://localhost:3000/auth/forgot_password_reset_password?parameter={{var:secret}}\">link</a> for changing the password in our services.</h3><br />May the force be with you!",
+			Variables: map[string]interface{}{
+				"secret": secret},
 			Headers: map[string]interface{}{
 				"X-My-header": "X2332X-324-432-534"},
 		},
