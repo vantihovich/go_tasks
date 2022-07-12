@@ -405,7 +405,7 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 		w.Write([]byte("Please specify the correct email address"))
 		return
 	}
-	//send email to provided address
+	//send email to provided address with the link containing secret
 	err = h.mailClient.SendForgottenPasswordEmail(parameters.Email, secret)
 	if err != nil {
 		log.WithError(err).Info("An attempt to send email to user`s email returned error")
@@ -415,4 +415,66 @@ func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Req
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("The email with secret key has been sent"))
+}
+
+type forgotPasswordResetPassword struct {
+	NewPassword        string `json:"new_password"`
+	ConfirmNewPassword string `json:"confirm_new_password"`
+}
+
+func (h UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	parameters := forgotPasswordResetPassword{}
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	secretParameter := r.URL.Query().Get("parameter")
+	if secretParameter == "" {
+		log.WithError(err).Info("parameter was not specified in the request URL")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//validating and hashing new password
+	valid := validators.ValidateChangePasswordRequest(parameters.NewPassword, parameters.ConfirmNewPassword)
+	if !valid {
+		log.Error("new password or new confirmed password are empty or not equal")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Password was not changed: new password or new confirmed password are empty or not equal"))
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(parameters.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.WithError(err).Info("error occurred when hashing the password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	//the request to DB to update password if provided in URL secret matches, also this request clears recovery field
+	err = h.userRepo.CheckSecretChangePassword(ctx, secretParameter, string(newHash))
+	if err != nil {
+		if err == ErrNoRows {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Please check provided secret, changing password is forbidden"))
+			return
+		}
+		log.WithError(err).Info("error occurred when resetting user's password")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug("password changed succesfully")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Password is changed"))
 }

@@ -19,6 +19,7 @@ type UserRepository interface {
 	DeactivateUser(ctx context.Context, userLogin string) (bool, error)
 	ChangePassword(ctx context.Context, userID int, newPassword string) error
 	WriteSecretToDBForPasswordRecovery(ctx context.Context, email, secret string) (bool, error)
+	CheckSecretChangePassword(ctx context.Context, secret string, newPassword string) error
 }
 
 var roleAdmin = "1"

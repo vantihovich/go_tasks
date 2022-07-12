@@ -151,3 +151,19 @@ func (db *DB) WriteSecretToDBForPasswordRecovery(ctx context.Context, email, sec
 	}
 	return true, nil
 }
+
+func (db *DB) CheckSecretChangePassword(ctx context.Context, secret string, newPassword string) error {
+	var user *models.User = &models.User{}
+	//the request sets new password, clears recovery field for preventing future unauthorized password changes
+	stmnt := `UPDATE users SET password=$1, recovery=null WHERE recovery=$2 returning user_id`
+	err := db.pool.QueryRow(ctx, stmnt, newPassword, secret).Scan(&user.ID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.WithField("Secret not found ", err).Debug("Valid error when secret not found")
+			return handlers.ErrNoRows
+		}
+		log.WithError(err).Error("err executing the DB request to reset password")
+		return err
+	}
+	return nil
+}
