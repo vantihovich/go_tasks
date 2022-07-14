@@ -85,6 +85,11 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load MailJet configs")
 	}
 
+	cfgWorldCoin, err := cnfg.LoadWCIParameter()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load WorldCoinIndex configs")
+	}
+
 	log.Info("сonnecting to Redis")
 	cache, err := redis.New("tcp", "127.0.0.1:6379")
 	if err != nil {
@@ -100,7 +105,7 @@ func service() http.Handler {
 	log.Info("connecting to mailing service")
 	mailClient := email.New(cfgMailJet)
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient, cfgWorldCoin)
 
 	r := chi.NewRouter()
 
@@ -116,6 +121,8 @@ func service() http.Handler {
 		r.Post("/forgot_password_reset_password", UsersProvider.ForgotPasswordResetPassword)
 
 	})
+	r.Get("/world_coin_index/ticker", mw.Authorize(cfgJWT.SecretKey, UsersProvider.WorldCoinIndexTickers))
+
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r
 }

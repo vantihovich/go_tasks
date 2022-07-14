@@ -33,6 +33,10 @@ type MailJetParameters struct {
 	SenderEmail string `env:"MAILJETSENDEREMAIL,required"`
 }
 
+type WorldCoinIndexKey struct {
+	Key string `env:"WORLDCOININDEXKEY,required"`
+}
+
 func LoadDB() (App, error) {
 	cfg := App{}
 	if err := env.Parse(&cfg); err != nil {
@@ -64,5 +68,13 @@ func LoadMailJetParameters() (MailJetParameters, error) {
 		return MailJetParameters{}, err
 	}
 
+	return cfg, nil
+}
+
+func LoadWCIParameter() (WorldCoinIndexKey, error) {
+	cfg := WorldCoinIndexKey{}
+	if err := env.Parse(&cfg); err != nil {
+		return WorldCoinIndexKey{}, err
+	}
 	return cfg, nil
 }

@@ -13,3 +13,10 @@ func ValidateChangePasswordRequest(newPassword, passwordConfirm string) bool {
 	}
 	return true
 }
+
+func ValidateWorldCoinIndexRequest(tickersList []string, fiat string) bool {
+	if len(tickersList) == 0 || fiat == "" {
+		return false
+	}
+	return true
+}

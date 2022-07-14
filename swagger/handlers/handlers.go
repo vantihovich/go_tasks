@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
@@ -19,11 +20,12 @@ import (
 )
 
 type UsersHandler struct {
-	userRepo   models.UserRepository
-	cache      Cache
-	jwtParam   string
-	cfgLogin   cnfg.LoginLimitParameters
-	mailClient email.Client
+	userRepo          models.UserRepository
+	cache             Cache
+	jwtParam          string
+	cfgLogin          cnfg.LoginLimitParameters
+	mailClient        email.Client
+	worldCoinIndexKey cnfg.WorldCoinIndexKey
 }
 
 type Cache interface {
@@ -31,13 +33,14 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wciKey cnfg.WorldCoinIndexKey) *UsersHandler {
 	return &UsersHandler{
-		userRepo:   userRepo,
-		cache:      c,
-		jwtParam:   jwtParam,
-		cfgLogin:   cfgLogin,
-		mailClient: mailCli,
+		userRepo:          userRepo,
+		cache:             c,
+		jwtParam:          jwtParam,
+		cfgLogin:          cfgLogin,
+		mailClient:        mailCli,
+		worldCoinIndexKey: wciKey,
 	}
 }
 
@@ -373,7 +376,7 @@ type forgotPasswordRequest struct {
 	Email string `json:"email"`
 }
 
-func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordRequest{}
 	w.Header().Set("Content-Type", "application/json")
@@ -422,7 +425,7 @@ type forgotPasswordResetPassword struct {
 	ConfirmNewPassword string `json:"confirm_new_password"`
 }
 
-func (h UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordResetPassword{}
 	w.Header().Set("Content-Type", "application/json")
@@ -477,4 +480,117 @@ func (h UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http
 	log.Debug("password changed succesfully")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Password is changed"))
+}
+
+type worldCoinIndexTickers struct {
+	Label      string  `json:"label"`
+	Name       string  `json:"name"`
+	Price      float32 `json:"price"`
+	Volume_24h float32 `json:"volume_24h"`
+	Timestamp  int64   `json:"timestamp"`
+}
+type worldCoinIndexTickersAPIResponse struct {
+	Markets []worldCoinIndexTickers
+}
+type worldCoinIndexTickersRequest struct {
+	Label []string `json:"label"`
+	Fiat  string   `json:"fiat"`
+}
+
+type response struct {
+	Label      string
+	Name       string
+	Price      float32
+	Volume_24h float32
+	Timestamp  time.Time
+}
+
+type responseArray struct {
+	Response []response
+}
+
+func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	parameters := worldCoinIndexTickersRequest{}
+	apiResponse := worldCoinIndexTickersAPIResponse{}
+	resp := response{}
+	respArray := responseArray{}
+
+	err := json.NewDecoder(r.Body).Decode(&parameters)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty request body")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.WithError(err).Info("error decoding request body occurred")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	//validating request parameters
+	valid := validators.ValidateWorldCoinIndexRequest(parameters.Label, parameters.Fiat)
+	if !valid {
+		log.Error("empty list of cryptocurrencies or fiat")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Please check if there is at least 1 cryptocurrency ticker and fiat"))
+		return
+	}
+
+	//concatenating values from labels array in the request to use one string in url
+	var list string
+	for i, val := range parameters.Label {
+		if i < (len(parameters.Label) - 1) {
+			list += val + "-"
+		} else {
+			list += val
+		}
+	}
+
+	fiat := parameters.Fiat
+	url := "https://www.worldcoinindex.com/apiservice/ticker?key=" + h.worldCoinIndexKey.Key + "&label=" + list + "&fiat=" + fiat
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.WithError(err).Info("error occurred when creating request to WorldCoinIndex api")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	client := &http.Client{}
+	apiResp, err := client.Do(req)
+	if err != nil {
+		log.WithError(err).Info("error occurred when performing request to WorldCoinIndex api")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewDecoder(apiResp.Body).Decode(&apiResponse)
+	if err != nil {
+		if err == io.EOF {
+			log.WithError(err).Info("empty response body")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		log.WithError(err).Info("error decoding response body occurred")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	//converting timestamp from unix to date in the response
+	for _, val := range apiResponse.Markets {
+		resp.Label = val.Label
+		resp.Name = val.Name
+		resp.Price = val.Price
+		resp.Timestamp = time.Unix(val.Timestamp, 0)
+		resp.Volume_24h = val.Volume_24h
+		respArray.Response = append(respArray.Response, resp)
+	}
+	//writing the response to user
+	err = json.NewEncoder(w).Encode(&respArray)
+	if err != nil {
+		log.WithError(err).Info("error encoding struct to JSON")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
