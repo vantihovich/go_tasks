@@ -21,12 +21,12 @@ import (
 )
 
 type UsersHandler struct {
-	userRepo            models.UserRepository
-	cache               Cache
-	jwtParam            string
-	cfgLogin            cnfg.LoginLimitParameters
-	mailClient          email.Client
-	worldCoinIndexParam cnfg.WorldCoinIndexParameters
+	userRepo          models.UserRepository
+	cache             Cache
+	jwtParam          string
+	cfgLogin          cnfg.LoginLimitParameters
+	mailClient        email.Client
+	worldCoinIndexCfg cnfg.WorldCoinIndexParameters
 }
 
 type Cache interface {
@@ -34,14 +34,14 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wciKey cnfg.WorldCoinIndexParameters) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wci cnfg.WorldCoinIndexParameters) *UsersHandler {
 	return &UsersHandler{
-		userRepo:            userRepo,
-		cache:               c,
-		jwtParam:            jwtParam,
-		cfgLogin:            cfgLogin,
-		mailClient:          mailCli,
-		worldCoinIndexParam: wciKey,
+		userRepo:          userRepo,
+		cache:             c,
+		jwtParam:          jwtParam,
+		cfgLogin:          cfgLogin,
+		mailClient:        mailCli,
+		worldCoinIndexCfg: wci,
 	}
 }
 
@@ -538,7 +538,7 @@ func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	request, err := wci.NewWCIRequest(parameters.Label, parameters.Fiat, h.worldCoinIndexParam.Key, h.worldCoinIndexParam.URL)
+	request, err := wci.NewWCIRequest(parameters.Label, parameters.Fiat, h.worldCoinIndexCfg.Key, h.worldCoinIndexCfg.URL)
 	if err != nil {
 		log.WithError(err).Info("error occurred when creating request to API")
 		w.WriteHeader(http.StatusInternalServerError)
