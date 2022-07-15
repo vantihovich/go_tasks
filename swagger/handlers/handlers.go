@@ -17,15 +17,16 @@ import (
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
 	secretKey "github.com/vantihovich/go_tasks/tree/master/swagger/secretKey"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/validators"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/wci"
 )
 
 type UsersHandler struct {
-	userRepo          models.UserRepository
-	cache             Cache
-	jwtParam          string
-	cfgLogin          cnfg.LoginLimitParameters
-	mailClient        email.Client
-	worldCoinIndexKey cnfg.WorldCoinIndexKey
+	userRepo            models.UserRepository
+	cache               Cache
+	jwtParam            string
+	cfgLogin            cnfg.LoginLimitParameters
+	mailClient          email.Client
+	worldCoinIndexParam cnfg.WorldCoinIndexParameters
 }
 
 type Cache interface {
@@ -33,14 +34,14 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wciKey cnfg.WorldCoinIndexKey) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wciKey cnfg.WorldCoinIndexParameters) *UsersHandler {
 	return &UsersHandler{
-		userRepo:          userRepo,
-		cache:             c,
-		jwtParam:          jwtParam,
-		cfgLogin:          cfgLogin,
-		mailClient:        mailCli,
-		worldCoinIndexKey: wciKey,
+		userRepo:            userRepo,
+		cache:               c,
+		jwtParam:            jwtParam,
+		cfgLogin:            cfgLogin,
+		mailClient:          mailCli,
+		worldCoinIndexParam: wciKey,
 	}
 }
 
@@ -492,7 +493,7 @@ type worldCoinIndexTickers struct {
 type worldCoinIndexTickersAPIResponse struct {
 	Markets []worldCoinIndexTickers
 }
-type worldCoinIndexTickersRequest struct {
+type WorldCoinIndexTickersRequest struct {
 	Label []string `json:"label"`
 	Fiat  string   `json:"fiat"`
 }
@@ -511,7 +512,7 @@ type responseArray struct {
 
 func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	parameters := worldCoinIndexTickersRequest{}
+	parameters := WorldCoinIndexTickersRequest{}
 	apiResponse := worldCoinIndexTickersAPIResponse{}
 	resp := response{}
 	respArray := responseArray{}
@@ -537,30 +538,16 @@ func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	//concatenating values from labels array in the request to use one string in url
-	var list string
-	for i, val := range parameters.Label {
-		if i < (len(parameters.Label) - 1) {
-			list += val + "-"
-		} else {
-			list += val
-		}
-	}
-
-	fiat := parameters.Fiat
-	url := "https://www.worldcoinindex.com/apiservice/ticker?key=" + h.worldCoinIndexKey.Key + "&label=" + list + "&fiat=" + fiat
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	request, err := wci.NewWCIRequest(parameters.Label, parameters.Fiat, h.worldCoinIndexParam.Key, h.worldCoinIndexParam.URL)
 	if err != nil {
-		log.WithError(err).Info("error occurred when creating request to WorldCoinIndex api")
+		log.WithError(err).Info("error occurred when creating request to API")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	client := &http.Client{}
-	apiResp, err := client.Do(req)
+	apiResp, err := wci.SendWCIRequest(request)
 	if err != nil {
-		log.WithError(err).Info("error occurred when performing request to WorldCoinIndex api")
+		log.WithError(err).Info("error occurred when performing request to API")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
