@@ -105,7 +105,8 @@ func service() http.Handler {
 	log.Info("connecting to mailing service")
 	mailClient := email.New(cfgMailJet)
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient, cfgWorldCoin)
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
+	WCIProvider := handlers.NewWCIHandler(cfgWorldCoin)
 
 	r := chi.NewRouter()
 
@@ -121,7 +122,7 @@ func service() http.Handler {
 		r.Post("/forgot_password_reset_password", UsersProvider.ForgotPasswordResetPassword)
 
 	})
-	r.Get("/world_coin_index/ticker", mw.Authorize(cfgJWT.SecretKey, UsersProvider.WorldCoinIndexTickers))
+	r.Get("/world_coin_index/ticker", mw.Authorize(cfgJWT.SecretKey, WCIProvider.WorldCoinIndexTickers))
 
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r

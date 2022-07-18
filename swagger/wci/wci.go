@@ -2,6 +2,8 @@ package wci
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,19 +18,23 @@ func SendWCIRequest(req *http.Request) (resp *http.Response, err error) {
 	return apiResp, nil
 }
 
-func NewWCIRequest(requestList []string, fiat, key, urlWci string) (req *http.Request, err error) {
-	var list string
-	for i, val := range requestList {
-		if i < (len(requestList) - 1) {
-			list += val + "-"
-		} else {
-			list += val
-		}
+func NewWCIRequest(requestList []string, fiat, key, urlTemplate string) (req *http.Request, err error) {
+	list := strings.Join(requestList, "-")
+
+	urlWCI, err := url.Parse(urlTemplate)
+	if err != nil {
+		log.WithError(err).Info("error occurred when parsing WCI url template")
+		return
 	}
 
-	url := urlWci + "key=" + key + "&label=" + list + "&fiat=" + fiat
+	values := urlWCI.Query()
+	values.Set("key", key)
+	values.Set("label", list)
+	values.Set("fiat", fiat)
 
-	req, err = http.NewRequest(http.MethodGet, url, nil)
+	urlWCI.RawQuery = values.Encode()
+
+	req, err = http.NewRequest(http.MethodGet, urlWCI.String(), nil)
 	if err != nil {
 		log.WithError(err).Info("error occurred when creating request to WorldCoinIndex api")
 		return req, err

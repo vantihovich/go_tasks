@@ -21,11 +21,14 @@ import (
 )
 
 type UsersHandler struct {
-	userRepo          models.UserRepository
-	cache             Cache
-	jwtParam          string
-	cfgLogin          cnfg.LoginLimitParameters
-	mailClient        email.Client
+	userRepo   models.UserRepository
+	cache      Cache
+	jwtParam   string
+	cfgLogin   cnfg.LoginLimitParameters
+	mailClient email.Client
+}
+
+type WCIHandler struct {
 	worldCoinIndexCfg cnfg.WorldCoinIndexParameters
 }
 
@@ -34,13 +37,18 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client, wci cnfg.WorldCoinIndexParameters) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
 	return &UsersHandler{
-		userRepo:          userRepo,
-		cache:             c,
-		jwtParam:          jwtParam,
-		cfgLogin:          cfgLogin,
-		mailClient:        mailCli,
+		userRepo:   userRepo,
+		cache:      c,
+		jwtParam:   jwtParam,
+		cfgLogin:   cfgLogin,
+		mailClient: mailCli,
+	}
+}
+
+func NewWCIHandler(wci cnfg.WorldCoinIndexParameters) *WCIHandler {
+	return &WCIHandler{
 		worldCoinIndexCfg: wci,
 	}
 }
@@ -510,7 +518,7 @@ type responseArray struct {
 	Response []response
 }
 
-func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Request) {
+func (wh *WCIHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	parameters := WorldCoinIndexTickersRequest{}
 	apiResponse := worldCoinIndexTickersAPIResponse{}
@@ -538,7 +546,7 @@ func (h *UsersHandler) WorldCoinIndexTickers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	request, err := wci.NewWCIRequest(parameters.Label, parameters.Fiat, h.worldCoinIndexCfg.Key, h.worldCoinIndexCfg.URL)
+	request, err := wci.NewWCIRequest(parameters.Label, parameters.Fiat, wh.worldCoinIndexCfg.Key, wh.worldCoinIndexCfg.URL)
 	if err != nil {
 		log.WithError(err).Info("error occurred when creating request to API")
 		w.WriteHeader(http.StatusInternalServerError)

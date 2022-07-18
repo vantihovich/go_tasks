@@ -174,7 +174,7 @@ paths:
   /auth/forgot_password:
     post:
       summary: Reset forgotten password 
-      description:  Feature provides an opportunity for user to reset the forgotten password, via getting an email with "secret", secret is stored in DB
+      description:  Feature provides an opportunity for user to reset the forgotten password, via getting an email with the link for changing password
       operationId: resetForgottenPassword
       tags:
         - users
@@ -203,9 +203,9 @@ paths:
 
   /auth/forgot_password_reset_password:
     post:
-      summary: Reset forgotten password pt3
-      description: Entering new password, if "verified" attribute on the profile is true
-      operationId: resetForgottenPasswordPt3
+      summary: Reset forgotten password 
+      description: Entering new password, with checking secret from the sent link
+      operationId: resetForgottenPassword
       tags:
         - users
 
