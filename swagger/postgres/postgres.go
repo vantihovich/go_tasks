@@ -9,8 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	config "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
-	handlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
 )
 
 type DB struct {
@@ -42,7 +42,7 @@ func (db *DB) FindByLogin(ctx context.Context, userLogin string) (*models.User, 
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithField("User not found", err).Debug("Valid error when login is not found")
-			return nil, handlers.ErrNoRows
+			return nil, usershandlers.ErrNoRows
 		}
 		log.WithError(err).Error("err executing or parsing the request to DB")
 		return nil, err
@@ -59,7 +59,7 @@ func (db *DB) FindByID(ctx context.Context, userID int) (*models.User, error) {
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithField("User not found", err).Debug("Valid error when login is not found")
-			return nil, handlers.ErrNoRows
+			return nil, usershandlers.ErrNoRows
 		}
 		log.WithError(err).Error("err executing or parsing the request of ID and password to DB")
 		return nil, err
@@ -160,7 +160,7 @@ func (db *DB) CheckSecretChangePassword(ctx context.Context, secret string, newP
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.WithField("Secret not found ", err).Debug("Valid error when secret not found")
-			return handlers.ErrNoRows
+			return usershandlers.ErrNoRows
 		}
 		log.WithError(err).Error("err executing the DB request to reset password")
 		return err

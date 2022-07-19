@@ -16,10 +16,11 @@ import (
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
-	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
+	rateshandlers "github.com/vantihovich/go_tasks/tree/master/swagger/rateshandlers"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/redis"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
 )
 
 //go:embed  api/apiauth.yaml
@@ -105,8 +106,8 @@ func service() http.Handler {
 	log.Info("connecting to mailing service")
 	mailClient := email.New(cfgMailJet)
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
-	WCIProvider := handlers.NewWCIHandler(cfgWorldCoin)
+	UsersProvider := usershandlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
+	WCIProvider := rateshandlers.NewWCIHandler(cfgWorldCoin)
 
 	r := chi.NewRouter()
 

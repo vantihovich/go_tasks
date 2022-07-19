@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
-	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
 )
 
 type claims struct {
@@ -40,7 +40,7 @@ func Authorize(cfg string, f http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		contextKeyUserID := handlers.ContextKeyUserID
+		contextKeyUserID := usershandlers.ContextKeyUserID
 		ctx := context.WithValue(r.Context(), contextKeyUserID, claims.UserID)
 		f.ServeHTTP(w, r.WithContext(ctx))
 	}
