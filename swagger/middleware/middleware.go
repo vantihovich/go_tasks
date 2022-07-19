@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
-	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers/usershandlers.go"
 )
 
 type claims struct {

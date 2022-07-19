@@ -9,8 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	config "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers/usershandlers.go"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/models"
-	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
 )
 
 type DB struct {

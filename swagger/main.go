@@ -16,11 +16,12 @@ import (
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
+
+	rateshandlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers/rateshandlers.go"
+	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers/usershandlers.gp"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
-	rateshandlers "github.com/vantihovich/go_tasks/tree/master/swagger/rateshandlers"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/redis"
-	usershandlers "github.com/vantihovich/go_tasks/tree/master/swagger/usershandlers"
 )
 
 //go:embed  api/apiauth.yaml
