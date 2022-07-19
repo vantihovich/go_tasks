@@ -1,4 +1,4 @@
-package rateshandlers
+package handlers
 
 import (
 	"encoding/json"
