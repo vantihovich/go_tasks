@@ -20,6 +20,7 @@ import (
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/redis"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/wci"
 )
 
 //go:embed  api/apiauth.yaml
@@ -85,10 +86,13 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load MailJet configs")
 	}
 
-	cfgWorldCoin, err := cnfg.LoadWCIParameter()
+	cfgWorldCoinIndex, err := cnfg.LoadWCIParameter()
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load WorldCoinIndex configs")
 	}
+
+	log.Info("initializing client for WCI api")
+	clientWCI := wci.New(cfgWorldCoinIndex)
 
 	log.Info("сonnecting to Redis")
 	cache, err := redis.New("tcp", "127.0.0.1:6379")
@@ -106,7 +110,7 @@ func service() http.Handler {
 	mailClient := email.New(cfgMailJet)
 
 	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
-	WCIProvider := handlers.NewWCIHandler(cfgWorldCoin)
+	WCIProvider := handlers.NewWCIHandler(&clientWCI)
 
 	r := chi.NewRouter()
 

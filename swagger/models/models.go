@@ -1,6 +1,9 @@
 package models
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type User struct {
 	ID       int
@@ -26,4 +29,20 @@ var roleAdmin = "1"
 
 func (u *User) IsAdmin() bool {
 	return u.RoleID == roleAdmin
+}
+
+type HandlerResponse struct {
+	Label      string
+	Name       string
+	Price      float32
+	Volume_24h float32
+	Timestamp  time.Time
+}
+
+type HandlerResponseArray struct {
+	Response []HandlerResponse
+}
+
+type WCISource interface {
+	LoadTickers(requestList []string, fiat string) (response HandlerResponseArray, err error)
 }

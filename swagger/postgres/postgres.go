@@ -86,7 +86,7 @@ func (db *DB) CheckIfLoginExists(ctx context.Context, login string) (bool, error
 
 func (db *DB) AddNewUser(ctx context.Context, login, password, firstName, lastName, email string, socialMediaLinks []string) error {
 	stmnt := `INSERT INTO users (login, password, first_name, last_name, email, social_media_links) 
-				VALUES ($1, $2, $3, $4, $5, $6)`
+			  VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err := db.pool.Exec(ctx, stmnt, login, password, firstName, lastName, email, socialMediaLinks)
 	if err != nil {
