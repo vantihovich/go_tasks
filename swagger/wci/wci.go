@@ -37,7 +37,7 @@ func New(cfg config.WorldCoinIndexParameters) (wciCli WCIClient) {
 	return wciCli
 }
 
-func (w *WCIClient) LoadTickers(requestList []string, fiat string) (response models.HandlerResponseArray, err error) {
+func (w *WCIClient) LoadTickers(requestList []string, fiat string) (response models.WorldCoinIndexHandlerResponseArray, err error) {
 	apiResponse := worldCoinIndexTickersAPIResponse{}
 
 	request, err := newWCIRequest(requestList, fiat, w.cfg.Key, w.cfg.URL)
@@ -92,9 +92,9 @@ func newWCIRequest(requestList []string, fiat, key, urlTemplate string) (request
 	return request, nil
 }
 
-func convertTimeStamp(apiResponse worldCoinIndexTickersAPIResponse) models.HandlerResponseArray {
-	resp := models.HandlerResponse{}
-	respArray := models.HandlerResponseArray{}
+func convertTimeStamp(apiResponse worldCoinIndexTickersAPIResponse) models.WorldCoinIndexHandlerResponseArray {
+	resp := models.WorldCoinIndexHandlerResponse{}
+	respArray := models.WorldCoinIndexHandlerResponseArray{}
 	for _, val := range apiResponse.Markets {
 		resp.Label = val.Label
 		resp.Name = val.Name

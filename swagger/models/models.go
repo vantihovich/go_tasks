@@ -31,7 +31,7 @@ func (u *User) IsAdmin() bool {
 	return u.RoleID == roleAdmin
 }
 
-type HandlerResponse struct {
+type WorldCoinIndexHandlerResponse struct {
 	Label      string
 	Name       string
 	Price      float32
@@ -39,10 +39,10 @@ type HandlerResponse struct {
 	Timestamp  time.Time
 }
 
-type HandlerResponseArray struct {
-	Response []HandlerResponse
+type WorldCoinIndexHandlerResponseArray struct {
+	Response []WorldCoinIndexHandlerResponse
 }
 
 type WCISource interface {
-	LoadTickers(requestList []string, fiat string) (response HandlerResponseArray, err error)
+	LoadTickers(requestList []string, fiat string) (response WorldCoinIndexHandlerResponseArray, err error)
 }
