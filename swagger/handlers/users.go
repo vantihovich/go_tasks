@@ -373,7 +373,7 @@ type forgotPasswordRequest struct {
 	Email string `json:"email"`
 }
 
-func (h UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandler) ForgotPasswordSendEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordRequest{}
 	w.Header().Set("Content-Type", "application/json")
@@ -422,7 +422,7 @@ type forgotPasswordResetPassword struct {
 	ConfirmNewPassword string `json:"confirm_new_password"`
 }
 
-func (h UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
+func (h *UsersHandler) ForgotPasswordResetPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	parameters := forgotPasswordResetPassword{}
 	w.Header().Set("Content-Type", "application/json")

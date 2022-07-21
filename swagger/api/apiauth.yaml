@@ -174,7 +174,7 @@ paths:
   /auth/forgot_password:
     post:
       summary: Reset forgotten password 
-      description:  Feature provides an opportunity for user to reset the forgotten password, via getting an email with "secret", secret is stored in DB
+      description:  Feature provides an opportunity for user to reset the forgotten password, via getting an email with the link for changing password
       operationId: resetForgottenPassword
       tags:
         - users
@@ -201,45 +201,11 @@ paths:
         "500":
           description: Internal server error
 
-  /auth/forgot_password_check_secret:
-    get:
-      summary: Reset forgotten password pt2
-      description: Checking provided by user secret 
-      operationId: resetForgottenPasswordPt2
-      tags:
-        - users
-
-      requestBody:
-        description: secret
-        required: true
-        content: 
-          application/json:
-            schema: 
-              $ref: '#/components/schemas/ForgotPWDSecretConfirmationRequest'
-            example:
-              secret: blablabla234
-      
-      responses:
-        "200":
-            description: The input is correct
-            content: 
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ForgotPWDSecretConfirmationResponse'
-        "400":
-          description: Bad request
-        "401":
-          $ref: '#/components/responses/UnauthorizedErr'
-        "403":
-          description: Incorrect secret provided
-        "500":
-          description: Internal server error
-
   /auth/forgot_password_reset_password:
     post:
-      summary: Reset forgotten password pt3
-      description: Entering new password, if "verified" attribute on the profile is true
-      operationId: resetForgottenPasswordPt3
+      summary: Reset forgotten password 
+      description: Entering new password, with checking secret from the sent link
+      operationId: resetForgottenPassword
       tags:
         - users
 
@@ -251,12 +217,11 @@ paths:
             schema: 
               $ref: '#/components/schemas/ForgotPWDSetNewPWDRequest'
             example:
-              user_id: user1
               new_password: "1234"
               confirm_new_password: "1234"
       
       responses:
-        "201":
+        "200":
           description: New password set
         "400":
           description: Bad request
@@ -264,6 +229,37 @@ paths:
           $ref: '#/components/responses/UnauthorizedErr'
         "403":
           description: Provided passwords mismatch
+        "500":
+          description: Internal server error
+
+  /world_coin_index/ticker:
+    get:
+      summary: request to 3rd party API to get cryptocurrency rates
+      description: provides rates for specified currencies
+      operationId: get rates
+      tags:
+        - services
+
+      requestBody:
+        description: list currencies with fiat
+        required: true
+        content: 
+          application/json:
+            schema: 
+              $ref: '#/components/schemas/WorldCoinIndexRequest'
+            example:
+              Label: ["ethbtc", "ltcbtc"]
+              Fiat: "btc"
+      
+      responses:
+        "200":
+          description: Rates provided to user
+        "204":
+          description: API responded with empty body
+        "400":
+          description: Bad request
+        "401":
+          $ref: '#/components/responses/UnauthorizedErr'
         "500":
           description: Internal server error
 
@@ -332,28 +328,6 @@ components:
           - email
       example:
           email: example@mail.com
-    ForgotPWDSecretConfirmationRequest:
-      type: object
-      properties:
-        secret: 
-          type: string
-      required:
-          - secret
-      example:
-          secret: blablabla234  
-    ForgotPWDSecretConfirmationResponse:
-      type: object
-      properties:
-        user_id:
-          type: string
-        secret: 
-          type: string
-      required:
-          - user_id
-          - secret
-      example:
-          user_id: user1
-          secret: blablabla234
     ForgotPWDSetNewPWDRequest:
       type: object
       properties:
@@ -364,11 +338,9 @@ components:
         confirm_new_password: 
           type: string
       required:
-          - user_id
           - new_password
           - confirm_new_password
       example:
-          user_id: "user1"
           new_password: "1234"
           confirm_new_password: "1234"
     ResetPWDRequest:
@@ -433,4 +405,17 @@ components:
           social_media_links: 
             - www.instagramm.com@johnny
             - www.twitter.com#johnny
+    WorldCoinIndexRequest:
+      type: object
+      properties:
+        Label:
+          type: array
+        Fiat: 
+          type: string
+      required:
+        - Label
+        - Fiat
+      example:
+        Label: ["ethbtc","ltcbtc", "bnbbtc"]
+        Fiat: "btc"
     

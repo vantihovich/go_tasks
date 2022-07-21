@@ -16,10 +16,11 @@ import (
 
 	cnfg "github.com/vantihovich/go_tasks/tree/master/swagger/configuration"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/email"
-	"github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
+	handlers "github.com/vantihovich/go_tasks/tree/master/swagger/handlers"
 	mw "github.com/vantihovich/go_tasks/tree/master/swagger/middleware"
 	postgr "github.com/vantihovich/go_tasks/tree/master/swagger/postgres"
 	"github.com/vantihovich/go_tasks/tree/master/swagger/redis"
+	"github.com/vantihovich/go_tasks/tree/master/swagger/wci"
 )
 
 //go:embed  api/apiauth.yaml
@@ -85,6 +86,14 @@ func service() http.Handler {
 		log.WithError(err).Fatal("Failed to load MailJet configs")
 	}
 
+	cfgWorldCoinIndex, err := cnfg.LoadWCIParameter()
+	if err != nil {
+		log.WithError(err).Fatal("Failed to load WorldCoinIndex configs")
+	}
+
+	log.Info("initializing client for WCI api")
+	clientWCI := wci.New(cfgWorldCoinIndex)
+
 	log.Info("сonnecting to Redis")
 	cache, err := redis.New("tcp", "127.0.0.1:6379")
 	if err != nil {
@@ -101,6 +110,7 @@ func service() http.Handler {
 	mailClient := email.New(cfgMailJet)
 
 	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
+	WCIProvider := handlers.NewWCIHandler(&clientWCI)
 
 	r := chi.NewRouter()
 
@@ -116,6 +126,8 @@ func service() http.Handler {
 		r.Post("/forgot_password_reset_password", UsersProvider.ForgotPasswordResetPassword)
 
 	})
+	r.Get("/world_coin_index/ticker", mw.Authorize(cfgJWT.SecretKey, WCIProvider.WorldCoinIndexTickers))
+
 	r.Handle("/swagger/*", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 	return r
 }
