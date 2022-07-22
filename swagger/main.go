@@ -109,7 +109,7 @@ func service() http.Handler {
 	log.Info("connecting to mailing service")
 	mailClient := email.New(cfgMailJet)
 
-	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT.SecretKey, cfgLogin, mailClient)
+	UsersProvider := handlers.NewUsersHandler(&db, cache, cfgJWT, cfgLogin, mailClient)
 	WCIProvider := handlers.NewWCIHandler(&clientWCI)
 
 	r := chi.NewRouter()

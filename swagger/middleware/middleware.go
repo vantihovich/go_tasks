@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/golang-jwt/jwt"
@@ -26,8 +27,10 @@ func Authorize(cfg string, f http.HandlerFunc) http.HandlerFunc {
 		tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte(cfg), nil
 		})
+
 		if err != nil {
-			if err.Error() == jwt.ErrSignatureInvalid.Error() {
+			if err == jwt.ErrSignatureInvalid {
+				fmt.Println("check condition")
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -35,7 +38,9 @@ func Authorize(cfg string, f http.HandlerFunc) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		if !tkn.Valid {
+			fmt.Println("check condition2")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

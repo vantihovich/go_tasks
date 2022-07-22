@@ -18,8 +18,9 @@ type App struct {
 	Database Database
 }
 
-type JWTSecret struct {
+type JWTParameters struct {
 	SecretKey string `env:"JWTSECRETKEY,required"`
+	JwtTTL    int    `env:"JWTTTL,required"`
 }
 
 type LoginLimitParameters struct {
@@ -46,10 +47,10 @@ func LoadDB() (App, error) {
 	return cfg, nil
 }
 
-func LoadJWT() (JWTSecret, error) {
-	cfg := JWTSecret{}
+func LoadJWT() (JWTParameters, error) {
+	cfg := JWTParameters{}
 	if err := env.Parse(&cfg); err != nil {
-		return JWTSecret{}, err
+		return JWTParameters{}, err
 	}
 	return cfg, nil
 }

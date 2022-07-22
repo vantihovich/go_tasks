@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,7 @@ import (
 type UsersHandler struct {
 	userRepo   models.UserRepository
 	cache      Cache
-	jwtParam   string
+	jwtParam   cnfg.JWTParameters
 	cfgLogin   cnfg.LoginLimitParameters
 	mailClient email.Client
 }
@@ -31,7 +32,7 @@ type Cache interface {
 	Set(string, int, int) error
 }
 
-func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam string, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
+func NewUsersHandler(userRepo models.UserRepository, c Cache, jwtParam cnfg.JWTParameters, cfgLogin cnfg.LoginLimitParameters, mailCli email.Client) *UsersHandler {
 	return &UsersHandler{
 		userRepo:   userRepo,
 		cache:      c,
@@ -199,15 +200,18 @@ func (h *UsersHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//jwtExpirationTime := time.Now().Local().Add(time.Minute * time.Duration(h.jwtParam.JwtTTL))
+
 	claims := &claims{
 		UserID: user.ID,
 		StandardClaims: jwt.StandardClaims{
-			Issuer: "AuthService",
+			Issuer:    "AuthService",
+			ExpiresAt: time.Now().Local().Add(time.Minute * time.Duration(h.jwtParam.JwtTTL)).Unix(),
 		},
 	}
 
 	jwToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	response.Token, err = jwToken.SignedString([]byte(h.jwtParam))
+	response.Token, err = jwToken.SignedString([]byte(h.jwtParam.SecretKey))
 	if err != nil {
 		log.WithError(err).Info("JWT creation returned error")
 		w.WriteHeader(http.StatusInternalServerError)
